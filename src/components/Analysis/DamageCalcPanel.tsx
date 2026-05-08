@@ -144,7 +144,7 @@ function EVInputs({ values, onChange }: { values: Record<string, number>; onChan
       <div className="grid grid-cols-3 gap-1">
         {stats.map(s => (
           <div key={s} className="flex items-center gap-1">
-            <span className="text-[10px] text-gray-400 w-6">{s}</span>
+            <span className="text-xs text-gray-400 w-6">{s}</span>
             <input
               type="number"
               min={0}

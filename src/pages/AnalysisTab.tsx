@@ -30,15 +30,15 @@ export function AnalysisTab({
   opposingTeams, onLoadTeam, onRemoveOpposing,
 }: AnalysisTabProps) {
   return (
-    <Tabs.Root defaultValue="overview" className="p-3 pb-20 space-y-3">
-      <div className="flex items-center justify-between">
+    <Tabs.Root defaultValue="overview" className="flex flex-col p-4 gap-3" style={{ height: 'calc(100dvh - 88px)' }}>
+      <div className="flex items-center justify-between shrink-0">
         <h2 className="text-base font-semibold text-gray-200">Analysis</h2>
         <Button variant="ghost" size="sm" onClick={onRefreshMeta}>
           <RefreshCw className="w-3 h-3" /> Refresh Meta
         </Button>
       </div>
 
-      <Tabs.List className="flex gap-1 border-b border-gray-700 overflow-x-auto" aria-label="Analysis sub-tabs">
+      <Tabs.List className="flex gap-1 border-b border-gray-700 overflow-x-auto shrink-0" aria-label="Analysis sub-tabs">
         {SUB_TABS.map(st => (
           <Tabs.Trigger
             key={st.id}
@@ -50,7 +50,7 @@ export function AnalysisTab({
         ))}
       </Tabs.List>
 
-      <div className="min-h-48">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {metaError && (
           <div className="text-xs text-red-400 mb-2">
             Meta data: {metaError}

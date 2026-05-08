@@ -51,39 +51,41 @@ export function TeamsTab({
   }
 
   return (
-    <div className="p-3 pb-20 space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col p-4 gap-4" style={{ height: 'calc(100dvh - 88px)' }}>
+      <div className="flex items-center justify-between shrink-0">
         <h2 className="text-base font-semibold text-gray-200">Teams</h2>
         <Button variant="primary" size="sm" onClick={() => setShowImport(true)}>
           <Upload className="w-3 h-3" /> Import Team
         </Button>
       </div>
 
-      <section>
-        <h3 className="text-sm font-medium text-gray-400 mb-2">Your Teams ({savedTeams.length})</h3>
-        {savedTeams.length === 0 ? (
-          <p className="text-gray-500 text-sm">No saved teams yet. Build and save a team in the Builder tab.</p>
-        ) : (
-          <div className="space-y-2">
-            {savedTeams.map(team => (
-              <TeamCard key={team.id} team={team} onLoad={onLoadTeam} onDelete={onDeleteTeam} />
-            ))}
-          </div>
-        )}
-      </section>
+      <div className="flex-1 overflow-y-auto space-y-4" style={{ minHeight: 0 }}>
+        <section>
+          <h3 className="text-sm font-medium text-gray-400 mb-2">Your Teams ({savedTeams.length})</h3>
+          {savedTeams.length === 0 ? (
+            <p className="text-gray-500 text-sm">No saved teams yet. Build and save a team in the Builder tab.</p>
+          ) : (
+            <div className="space-y-2">
+              {savedTeams.map(team => (
+                <TeamCard key={team.id} team={team} onLoad={onLoadTeam} onDelete={onDeleteTeam} />
+              ))}
+            </div>
+          )}
+        </section>
 
-      <section>
-        <h3 className="text-sm font-medium text-gray-400 mb-2">Opposing Teams ({opposingTeams.length})</h3>
-        {opposingTeams.length === 0 ? (
-          <p className="text-gray-500 text-sm">No opposing teams imported. Import teams to use in team comparison.</p>
-        ) : (
-          <div className="space-y-2">
-            {opposingTeams.map(team => (
-              <TeamCard key={team.id} team={team} onLoad={onLoadTeam} onDelete={onRemoveOpposing} />
-            ))}
-          </div>
-        )}
-      </section>
+        <section>
+          <h3 className="text-sm font-medium text-gray-400 mb-2">Opposing Teams ({opposingTeams.length})</h3>
+          {opposingTeams.length === 0 ? (
+            <p className="text-gray-500 text-sm">No opposing teams imported. Import teams to use in team comparison.</p>
+          ) : (
+            <div className="space-y-2">
+              {opposingTeams.map(team => (
+                <TeamCard key={team.id} team={team} onLoad={onLoadTeam} onDelete={onRemoveOpposing} />
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
 
       <Modal open={showImport} onClose={() => setShowImport(false)} title="Import Team">
         <div className="space-y-3">

@@ -1,5 +1,5 @@
 import { Generations } from '@pkmn/data'
-import { Dex } from '@pkmn/dex'
+import { Dex, toID } from '@pkmn/dex'
 import type { VGCFormat } from '../types'
 
 const gens = new Generations(Dex)
@@ -164,12 +164,35 @@ export function getTypeEffectiveness(attackType: string, defenderTypes: string[]
   return mult
 }
 
-export function getLearnableMoveNames(species: string): string[] {
-  const sp = getPokemon(species)
-  if (!sp) return []
-  const ls = (sp as unknown as Record<string, unknown>).learnset as Record<string, string[]> | undefined
-  if (!ls) return []
-  return Object.keys(ls).map(m => m.charAt(0).toUpperCase() + m.slice(1)).sort()
+export async function getLearnableMoveNames(species: string): Promise<string[]> {
+  const id = toID(species)
+  if (!id) return []
+
+  async function load(idToTry: string): Promise<string[] | null> {
+    try {
+      const data = await Dex.learnsets.get(idToTry)
+      if (data?.learnset && Object.keys(data.learnset).length > 0) {
+        return Object.keys(data.learnset)
+          .map(m => m.charAt(0).toUpperCase() + m.slice(1))
+          .sort()
+      }
+    } catch {}
+    return null
+  }
+
+  const result = await load(id)
+  if (result) return result
+
+  const sp = Dex.species.get(species) as { baseSpecies?: string } | undefined
+  if (sp?.baseSpecies) {
+    const baseId = toID(sp.baseSpecies)
+    if (baseId && baseId !== id) {
+      const baseResult = await load(baseId)
+      if (baseResult) return baseResult
+    }
+  }
+
+  return []
 }
 
 export function getPokemonNum(name: string): number {

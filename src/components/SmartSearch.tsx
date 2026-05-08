@@ -1,6 +1,8 @@
 import { useState, useMemo, useRef, useEffect, useCallback, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
+import { Search, Hash, Swords, Shield } from 'lucide-react'
 import { searchPokemon } from '../lib/search'
+import { TYPE_COLORS } from '../lib/theme'
 import type { SearchMatch } from '../types'
 
 interface SmartSearchProps {
@@ -8,6 +10,15 @@ interface SmartSearchProps {
   placeholder?: string
   exclude?: string[]
 }
+
+const KIND_CONFIG: Record<string, { label: string; icon: React.ReactNode }> = {
+  name: { label: 'Species', icon: <Search className="w-3 h-3" /> },
+  type: { label: 'Type', icon: <Hash className="w-3 h-3" /> },
+  move: { label: 'Move', icon: <Swords className="w-3 h-3" /> },
+  ability: { label: 'Ability', icon: <Shield className="w-3 h-3" /> },
+}
+
+const KIND_ORDER = ['name', 'type', 'move', 'ability']
 
 export function SmartSearch({ onSelect, placeholder = 'Search Pokémon...', exclude = [] }: SmartSearchProps) {
   const [query, setQuery] = useState('')
@@ -20,6 +31,16 @@ export function SmartSearch({ onSelect, placeholder = 'Search Pokémon...', excl
     const matches = searchPokemon(query)
     return matches.filter(m => !exclude.includes(m.species))
   }, [query, exclude])
+
+  const grouped = useMemo(() => {
+    const groups: Record<string, SearchMatch[]> = { name: [], type: [], move: [], ability: [] }
+    for (const r of results) {
+      groups[r.kind].push(r)
+    }
+    return KIND_ORDER.filter(k => groups[k].length > 0).map(kind => ({ kind, matches: groups[kind] }))
+  }, [results])
+
+  const flatResults = useMemo(() => grouped.flatMap(g => g.matches), [grouped])
 
   useEffect(() => {
     setSelectedIndex(0)
@@ -44,20 +65,20 @@ export function SmartSearch({ onSelect, placeholder = 'Search Pokémon...', excl
   function handleKeyDown(e: KeyboardEvent) {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setSelectedIndex(i => Math.min(i + 1, results.length - 1))
+      setSelectedIndex(i => Math.min(i + 1, flatResults.length - 1))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setSelectedIndex(i => Math.max(i - 1, 0))
-    } else if (e.key === 'Enter' && results[selectedIndex]) {
+    } else if (e.key === 'Enter' && flatResults[selectedIndex]) {
       e.preventDefault()
-      handleSelect(results[selectedIndex])
+      handleSelect(flatResults[selectedIndex])
     } else if (e.key === 'Escape') {
       setQuery('')
       inputRef.current?.blur()
     }
   }
 
-  const showResults = results.length > 0 && query.trim().length > 0
+  const showResults = flatResults.length > 0 && query.trim().length > 0
 
   return (
     <div className="relative">
@@ -72,7 +93,8 @@ export function SmartSearch({ onSelect, placeholder = 'Search Pokémon...', excl
       />
       {showResults && inputRectRef.current && createPortal(
         <ResultsDropdown
-          results={results}
+          grouped={grouped}
+          flatResults={flatResults}
           selectedIndex={selectedIndex}
           inputRect={inputRectRef.current}
           onSelect={handleSelect}
@@ -86,7 +108,8 @@ export function SmartSearch({ onSelect, placeholder = 'Search Pokémon...', excl
 }
 
 interface ResultsDropdownProps {
-  results: SearchMatch[]
+  grouped: { kind: string; matches: SearchMatch[] }[]
+  flatResults: SearchMatch[]
   selectedIndex: number
   inputRect: DOMRect
   onSelect: (match: SearchMatch) => void
@@ -95,7 +118,7 @@ interface ResultsDropdownProps {
 }
 
 const ResultsDropdown = ({
-  results, selectedIndex, inputRect,
+  grouped, selectedIndex, inputRect,
   onSelect, onHover, onClose,
 }: ResultsDropdownProps) => {
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -112,7 +135,7 @@ const ResultsDropdown = ({
 
   useEffect(() => {
     if (dropdownRef.current) {
-      const el = dropdownRef.current.children[selectedIndex] as HTMLElement
+      const el = dropdownRef.current.querySelectorAll('[data-result]')[selectedIndex] as HTMLElement
       el?.scrollIntoView({ block: 'nearest' })
     }
   }, [selectedIndex])
@@ -121,36 +144,68 @@ const ResultsDropdown = ({
     position: 'fixed',
     top: `${inputRect.bottom + 4}px`,
     left: `${inputRect.left}px`,
-    width: `${inputRect.width}px`,
+    width: `${Math.max(inputRect.width, 320)}px`,
     zIndex: 9999,
   }
+
+  let globalIndex = -1
 
   return (
     <div
       ref={dropdownRef}
       style={style}
-      className="bg-gray-800 border border-gray-600 rounded-lg max-h-64 overflow-y-auto shadow-xl"
+      className="bg-gray-800 border border-gray-600 rounded-lg max-h-72 overflow-y-auto shadow-xl"
     >
-      {results.map((match, i) => (
-        <button
-          key={match.species}
-          onClick={() => onSelect(match)}
-          onMouseEnter={() => onHover(i)}
-          className={`w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors ${
-            i === selectedIndex ? 'bg-blue-600/40 text-white' : 'text-gray-200 hover:bg-gray-700'
-          }`}
-        >
-          <span className="font-medium truncate">{match.species}</span>
-          <span className="flex gap-1 shrink-0">
-            {match.types.map(t => (
-              <span key={t} className="text-xs px-1.5 py-0.5 rounded bg-gray-700 text-gray-300">{t}</span>
-            ))}
-          </span>
-          {match.reason !== 'Name match' && (
-            <span className="text-xs text-gray-400 ml-auto shrink-0">{match.reason}</span>
-          )}
-        </button>
-      ))}
+      {grouped.map(({ kind, matches }) => {
+        const config = KIND_CONFIG[kind]
+        return (
+          <div key={kind}>
+            <div className="flex items-center gap-1.5 px-3 py-1 text-[10px] font-medium text-gray-500 border-b border-gray-700/30 bg-gray-800/50 sticky top-0">
+              {config?.icon}
+              {config?.label}
+              <span className="text-gray-600 ml-1">({matches.length})</span>
+            </div>
+            {matches.map(match => {
+              globalIndex++
+              const i = globalIndex
+
+              return (
+                <button
+                  key={`${match.species}-${match.kind}-${match.matchDetail}`}
+                  data-result
+                  onClick={() => onSelect(match)}
+                  onMouseEnter={() => onHover(i)}
+                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${
+                    i === selectedIndex ? 'bg-blue-600/30 text-white' : 'text-gray-200 hover:bg-gray-700/50'
+                  }`}
+                >
+                  <span className="font-medium truncate">{match.species}</span>
+                  <span className="flex gap-1 shrink-0">
+                    {match.types.map(t => {
+                      const tc = TYPE_COLORS[t] ?? '#6b7280'
+                      return (
+                        <span
+                          key={t}
+                          className="text-[9px] px-1.5 py-0.5 rounded-full font-medium"
+                          style={{ backgroundColor: tc + '25', color: tc }}
+                        >
+                          {t}
+                        </span>
+                      )
+                    })}
+                  </span>
+                  <span className="text-[9px] text-gray-500 ml-auto shrink-0">
+                    {match.kind === 'type' && match.matchDetail}
+                    {match.kind === 'move' && match.matchDetail}
+                    {match.kind === 'ability' && match.matchDetail}
+                    {match.kind === 'name' && ''}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )
+      })}
     </div>
   )
 }

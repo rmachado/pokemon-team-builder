@@ -85,8 +85,10 @@ export interface MetaPokemonStats {
 }
 
 export interface SearchMatch {
-  species: string;
-  reason: string;
-  types: string[];
-  abilities: string[];
+  species: string
+  kind: 'name' | 'type' | 'move' | 'ability'
+  matchDetail: string
+  types: string[]
+  abilities: string[]
+  score: number
 }
