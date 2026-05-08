@@ -24,7 +24,8 @@ export default function App() {
   const { metaData, loading: metaLoading, error: metaError, refresh: refreshMeta } = useMetaData(currentFormat.id)
 
   const handleImport = useCallback((mons: PokemonSet[]) => {
-    setCurrentTeam(mons)
+    const padded = [...mons, ...emptyTeam()].slice(0, 6)
+    setCurrentTeam(padded)
   }, [setCurrentTeam])
 
   const handleReset = useCallback(() => {
