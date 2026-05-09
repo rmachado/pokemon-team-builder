@@ -21,7 +21,7 @@ export default function App() {
     loadTeam,
   } = useTeam()
 
-  const { metaData, loading: metaLoading, error: metaError, refresh: refreshMeta } = useMetaData(currentFormat.id)
+  const { metaData, loading: metaLoading, error: metaError, refresh: refreshMeta } = useMetaData(currentFormat.smogonId)
 
   const handleImport = useCallback((mons: PokemonSet[]) => {
     const padded = [...mons, ...emptyTeam()].slice(0, 6)

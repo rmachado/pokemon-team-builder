@@ -38,6 +38,7 @@ export interface VGCFormat {
   name: string;
   gen: number;
   description: string;
+  smogonId: string;
 }
 
 export interface TypeEffectiveness {

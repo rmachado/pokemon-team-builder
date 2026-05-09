@@ -11,9 +11,10 @@ export function getGen(num: number) {
 export const GEN9 = getGen(9)
 
 export const VGC_FORMATS: VGCFormat[] = [
-  { id: 'gen9vgc2025regg', name: 'VGC 2025 Reg G', gen: 9, description: 'Gen 9, One Restricted, OTS' },
-  { id: 'gen9vgc2025regi', name: 'VGC 2025 Reg I', gen: 9, description: 'Gen 9, Two Restricted, OTS' },
-  { id: 'gen9vgc2025regf', name: 'VGC 2025 Reg F', gen: 9, description: 'Gen 9, No Restricted' },
+  { id: 'gen9championsvgc2026regma', name: 'Champions VGC 2026 Reg M-A', gen: 9, description: 'Pokémon Champions, Reg M-A', smogonId: '' },
+  { id: 'gen9vgc2024regg', name: 'VGC 2024 Reg G', gen: 9, description: 'Gen 9, One Restricted, OTS', smogonId: 'gen9vgc2025regg' },
+  { id: 'gen9vgc2026regi', name: 'VGC 2026 Reg I', gen: 9, description: 'Gen 9, Two Restricted, OTS', smogonId: 'gen9vgc2025regi' },
+  { id: 'gen9vgc2026regf', name: 'VGC 2026 Reg F', gen: 9, description: 'Gen 9, No Restricted, OTS', smogonId: 'gen9vgc2025regf' },
 ]
 
 export function getAllPokemon(genNum: number = 9) {
