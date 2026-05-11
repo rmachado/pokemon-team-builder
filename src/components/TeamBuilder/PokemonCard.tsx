@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
-import type { PokemonSet } from '../../types'
-import { getPokemonNum, getPokemon, getMove, getItemSpriteUrl, calcStat, getNatureMultiplier } from '../../lib/pkmn'
-import { TYPE_COLORS, STAT_COLORS, STAT_LABEL } from '../../lib/theme'
+import type { PokemonSet } from '@/types'
+import { getPokemonNum, getPokemon, getMove, getItemSpriteUrl, getNatureMultiplier } from '@/lib/pkmn'
+import { TYPE_COLORS, STAT_COLORS, STAT_LABEL } from '@/lib/theme'
 import { Sparkles } from 'lucide-react'
+import { StatsCalculator } from '@/domain'
 
 interface PokemonCardProps {
   pokemon: PokemonSet
@@ -19,13 +20,12 @@ export function PokemonCard({ pokemon, isActive, onClick, onEdit }: PokemonCardP
   const num = hasMon ? getPokemonNum(pokemon.species) : 0
 
   const dexSpecies = useMemo(() => pokemon.species ? getPokemon(pokemon.species) : null, [pokemon.species])
-  const dexAny = dexSpecies as unknown as Record<string, unknown> | null
-  const baseStats = (dexAny?.baseStats ?? {}) as Record<string, number>
-  const types = (dexAny?.types ?? []) as string[]
+    const baseStats = (dexSpecies?.baseStats ?? {}) as Record<string, number>
+  const types = (dexSpecies?.types ?? []) as string[]
   const primaryColor = types[0] ? TYPE_COLORS[types[0]] ?? '#6b7280' : '#6b7280'
 
   function statValue(s: string): number {
-    return calcStat(baseStats[s] ?? 80, pokemon.ivs[s], pokemon.evs[s], pokemon.level || 50, getNatureMultiplier(pokemon.nature, s))
+    return StatsCalculator.calculate(baseStats[s] ?? 80, pokemon.ivs[s], pokemon.evs[s], pokemon.level || 50, getNatureMultiplier(pokemon.nature, s), s)
   }
 
   return (
@@ -137,7 +137,7 @@ export function PokemonCard({ pokemon, isActive, onClick, onEdit }: PokemonCardP
             {[0, 1, 2, 3].map(i => {
               const moveName = pokemon.moves[i]
               const moveData = moveName ? getMove(moveName) : null
-              const moveType = moveData ? (moveData as unknown as Record<string, unknown>).type as string : null
+              const moveType = moveData ? moveData.type as string : null
               const typeColor = moveType ? TYPE_COLORS[moveType] : undefined
 
               return (

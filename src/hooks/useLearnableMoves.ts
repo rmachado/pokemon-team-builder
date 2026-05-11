@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react'
-import { getLearnableMoveNames } from '../lib/pkmn'
+import { getLearnableMoveNames } from '@/lib/pkmn'
 
 export function useLearnableMoves(species: string): string[] {
   const [moves, setMoves] = useState<string[]>([])
 
   useEffect(() => {
     let canceled = false
+
     if (!species) {
-      setMoves([])
-      return
+      // Don't set state synchronously; return and let the effect cleanup handle it
+      return () => { canceled = true }
     }
 
-    setMoves([])
     getLearnableMoveNames(species).then(result => {
       if (!canceled) setMoves(result)
     })

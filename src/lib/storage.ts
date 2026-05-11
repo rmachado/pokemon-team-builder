@@ -1,4 +1,4 @@
-import type { Team } from '../types'
+import type { Team } from '@/types'
 
 const STORAGE_KEY_TEAMS = 'vgc_teams'
 const STORAGE_KEY_OPPOSING = 'vgc_opposing_teams'

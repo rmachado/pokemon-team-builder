@@ -1,6 +1,6 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { Pencil, BarChart3, Users } from 'lucide-react'
-import type { GameTab } from '../types'
+import type { GameTab } from '@/types'
 
 interface TabItem {
   id: GameTab

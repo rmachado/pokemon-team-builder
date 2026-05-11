@@ -1,6 +1,7 @@
-import { useState, useMemo, useRef, useEffect, useCallback, type KeyboardEvent } from 'react'
+import { useState, useMemo, useRef, useCallback, type KeyboardEvent } from 'react'
 import { Search } from 'lucide-react'
-import { getItems, getItem, getItemSpriteUrl } from '../../lib/pkmn'
+import { getItems, getItem, getItemSpriteUrl } from '@/lib/pkmn'
+import { SearchEngine } from '@/domain'
 
 interface ItemEditorProps {
   current: string
@@ -8,26 +9,15 @@ interface ItemEditorProps {
   onAdvance?: () => void
 }
 
-function fuzzyScore(query: string, target: string): number {
-  const q = query.toLowerCase().trim()
-  const t = target.toLowerCase()
-  if (q === t) return 100
-  if (t.startsWith(q)) return 85
-  if (t.includes(q)) return 70
-  const qWords = q.split(/\s+/)
-  for (const w of qWords) { if (t.includes(w)) return 30 }
-  return -1
-}
-
 export function ItemEditor({ current, onSelect, onAdvance }: ItemEditorProps) {
   const [query, setQuery] = useState('')
   const [focusedIndex, setFocusedIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
   const itemRefs = useRef<Map<number, HTMLButtonElement>>(new Map())
-  const allItems = useMemo(() => getItems(), [])
+  const allItems = getItems()
 
   const items = useMemo(() => {
-    const mapped = allItems.map(i => ({ name: i, score: fuzzyScore(query, i) }))
+    const mapped = allItems.map(i => ({ name: i, score: SearchEngine.score(query, i) }))
 
     const sorted = !query.trim()
       ? mapped.sort((a, b) => a.name.localeCompare(b.name))
@@ -36,16 +26,15 @@ export function ItemEditor({ current, onSelect, onAdvance }: ItemEditorProps) {
     return [{ name: null, score: -1 } as const, ...sorted].slice(0, 201)
   }, [query, allItems])
 
-  useEffect(() => {
-    if (focusedIndex >= items.length) setFocusedIndex(items.length - 1)
-  }, [items.length, focusedIndex])
+  const safeFocusedIndex = focusedIndex >= items.length ? items.length - 1 : focusedIndex
 
   const focusItem = useCallback((idx: number) => {
-    setFocusedIndex(idx)
-    const btn = itemRefs.current.get(idx)
+    const safeIdx = idx >= items.length ? items.length - 1 : idx
+    setFocusedIndex(safeIdx)
+    const btn = itemRefs.current.get(safeIdx)
     btn?.focus()
     btn?.scrollIntoView({ block: 'nearest' })
-  }, [])
+  }, [items.length])
 
   function handleSearchKeyDown(e: KeyboardEvent) {
     if (e.key === 'ArrowDown' && items.length > 0) {
@@ -80,7 +69,7 @@ export function ItemEditor({ current, onSelect, onAdvance }: ItemEditorProps) {
           ref={inputRef}
           type="text"
           value={query}
-          onChange={e => setQuery(e.target.value)}
+          onChange={e => { setQuery(e.target.value); setFocusedIndex(-1) }}
           onKeyDown={handleSearchKeyDown}
           placeholder={`Search items... (${allItems.length} available)`}
           className="w-full bg-gray-800 border border-gray-600 rounded-lg pl-8 pr-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
@@ -92,7 +81,7 @@ export function ItemEditor({ current, onSelect, onAdvance }: ItemEditorProps) {
         {items.map((item, idx) => {
           const name = item.name
           const isSelected = name === null ? !current : name === current
-          const data = name ? (getItem(name) as Record<string, unknown> | undefined) : undefined
+          const data = name ? getItem(name) : undefined
           const desc = data ? ((data.desc as string) || (data.shortDesc as string) || '') : ''
           const spriteUrl = name ? getItemSpriteUrl(name) : null
 
@@ -110,7 +99,7 @@ export function ItemEditor({ current, onSelect, onAdvance }: ItemEditorProps) {
               ref={el => { if (el) itemRefs.current.set(idx, el); else itemRefs.current.delete(idx) }}
               onClick={handleClick}
               onKeyDown={e => handleItemKeyDown(e, idx, name ?? '')}
-              tabIndex={focusedIndex === idx ? 0 : -1}
+              tabIndex={safeFocusedIndex === idx ? 0 : -1}
               className={`w-full text-left rounded-xl p-3 transition-colors border-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 ${
                 isSelected
                   ? 'border-blue-400 bg-blue-600/10'

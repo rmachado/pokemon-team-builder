@@ -1,22 +1,11 @@
 import { RefreshCw } from 'lucide-react'
 import * as Tabs from '@radix-ui/react-tabs'
-import type { PokemonSet, MetaPokemonStats, Team } from '../types'
-import { TypeCoverage } from '../components/Analysis/TypeCoverage'
-import { MatchupTable } from '../components/Analysis/MatchupTable'
-import { DamageCalcPanel } from '../components/Analysis/DamageCalcPanel'
-import { TeamComparison } from '../components/Analysis/TeamComparison'
-import { Button } from '../components/ui/Button'
-
-interface AnalysisTabProps {
-  team: PokemonSet[]
-  metaData: MetaPokemonStats[]
-  metaLoading: boolean
-  metaError: string | null
-  onRefreshMeta: () => void
-  opposingTeams: Team[]
-  onLoadTeam: (team: Team) => void
-  onRemoveOpposing: (id: string) => void
-}
+import { TypeCoverage } from '@/components/Analysis/TypeCoverage'
+import { MatchupTable } from '@/components/Analysis/MatchupTable'
+import { DamageCalcPanel } from '@/components/Analysis/DamageCalcPanel'
+import { TeamComparison } from '@/components/Analysis/TeamComparison'
+import { Button } from '@/components/ui/Button'
+import { useTeamStore, useMetaStore, useFormatStore } from '@/stores'
 
 const SUB_TABS = [
   { id: 'overview', label: 'Overview' },
@@ -25,15 +14,22 @@ const SUB_TABS = [
   { id: 'compare', label: 'Team Compare' },
 ]
 
-export function AnalysisTab({
-  team, metaData, metaLoading, metaError, onRefreshMeta,
-  opposingTeams, onLoadTeam, onRemoveOpposing,
-}: AnalysisTabProps) {
+export function AnalysisTab() {
+  const { currentTeam, opposingTeams, loadTeam, removeOpposingTeam } = useTeamStore()
+  const { metaData, loading: metaLoading, error: metaError } = useMetaStore()
+  const { currentFormat } = useFormatStore()
+
+  const handleRefreshMeta = () => {
+    if (currentFormat.smogonId) {
+      useMetaStore.getState().refresh(currentFormat.smogonId)
+    }
+  }
+
   return (
     <Tabs.Root defaultValue="overview" className="flex flex-col p-4 gap-3" style={{ height: 'calc(100dvh - 88px)' }}>
       <div className="flex items-center justify-between shrink-0">
         <h2 className="text-base font-semibold text-gray-200">Analysis</h2>
-        <Button variant="ghost" size="sm" onClick={onRefreshMeta}>
+        <Button variant="ghost" size="sm" onClick={handleRefreshMeta}>
           <RefreshCw className="w-3 h-3" /> Refresh Meta
         </Button>
       </div>
@@ -58,20 +54,20 @@ export function AnalysisTab({
         )}
 
         <Tabs.Content value="overview">
-          <TypeCoverage team={team} />
+          <TypeCoverage team={currentTeam} />
         </Tabs.Content>
         <Tabs.Content value="matchup">
-          <MatchupTable team={team} metaData={metaData} loading={metaLoading} />
+          <MatchupTable team={currentTeam} metaData={metaData} loading={metaLoading} />
         </Tabs.Content>
         <Tabs.Content value="calc">
           <DamageCalcPanel />
         </Tabs.Content>
         <Tabs.Content value="compare">
           <TeamComparison
-            yourTeam={team}
+            yourTeam={currentTeam}
             opposingTeams={opposingTeams}
-            onSelect={onLoadTeam}
-            onRemove={onRemoveOpposing}
+            onSelect={loadTeam}
+            onRemove={removeOpposingTeam}
           />
         </Tabs.Content>
       </div>

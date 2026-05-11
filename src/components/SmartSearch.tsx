@@ -1,9 +1,9 @@
-import { useState, useMemo, useRef, useEffect, useCallback, type KeyboardEvent } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback, useLayoutEffect, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Search, Hash, Swords, Shield } from 'lucide-react'
-import { searchPokemon } from '../lib/search'
-import { TYPE_COLORS } from '../lib/theme'
-import type { SearchMatch } from '../types'
+import { searchPokemon } from '@/lib/search'
+import { TYPE_COLORS } from '@/lib/theme'
+import type { SearchMatch } from '@/types'
 
 interface SmartSearchProps {
   onSelect: (species: string) => void
@@ -23,8 +23,8 @@ const KIND_ORDER = ['name', 'type', 'move', 'ability']
 export function SmartSearch({ onSelect, placeholder = 'Search Pokémon...', exclude = [] }: SmartSearchProps) {
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [inputRect, setInputRect] = useState<DOMRect | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const inputRectRef = useRef<DOMRect | null>(null)
 
   const results = useMemo(() => {
     if (!query.trim()) return []
@@ -43,24 +43,35 @@ export function SmartSearch({ onSelect, placeholder = 'Search Pokémon...', excl
   const flatResults = useMemo(() => grouped.flatMap(g => g.matches), [grouped])
 
   useEffect(() => {
-    setSelectedIndex(0)
-  }, [query])
-
-  useEffect(() => {
     inputRef.current?.focus()
   }, [])
 
-  useEffect(() => {
-    if (results.length > 0 && inputRef.current) {
-      inputRectRef.current = inputRef.current.getBoundingClientRect()
+  useLayoutEffect(() => {
+    function updateRect() {
+      if (inputRef.current) {
+        setInputRect(inputRef.current.getBoundingClientRect())
+      }
     }
-  }, [results.length])
+    updateRect()
+    window.addEventListener('scroll', updateRect, true)
+    window.addEventListener('resize', updateRect)
+    return () => {
+      window.removeEventListener('scroll', updateRect, true)
+      window.removeEventListener('resize', updateRect)
+    }
+  }, [])
 
   const handleSelect = useCallback((match: SearchMatch) => {
     onSelect(match.species)
     setQuery('')
+    setSelectedIndex(0)
     inputRef.current?.focus()
   }, [onSelect])
+
+  function handleChange(value: string) {
+    setQuery(value)
+    setSelectedIndex(0)
+  }
 
   function handleKeyDown(e: KeyboardEvent) {
     if (e.key === 'ArrowDown') {
@@ -74,6 +85,7 @@ export function SmartSearch({ onSelect, placeholder = 'Search Pokémon...', excl
       handleSelect(flatResults[selectedIndex])
     } else if (e.key === 'Escape') {
       setQuery('')
+      setSelectedIndex(0)
       inputRef.current?.blur()
     }
   }
@@ -86,20 +98,20 @@ export function SmartSearch({ onSelect, placeholder = 'Search Pokémon...', excl
         ref={inputRef}
         type="text"
         value={query}
-        onChange={e => setQuery(e.target.value)}
+        onChange={e => handleChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
       />
-      {showResults && inputRectRef.current && createPortal(
+      {showResults && inputRect && createPortal(
         <ResultsDropdown
           grouped={grouped}
           flatResults={flatResults}
           selectedIndex={selectedIndex}
-          inputRect={inputRectRef.current}
+          inputRect={inputRect}
           onSelect={handleSelect}
           onHover={setSelectedIndex}
-          onClose={() => { setQuery(''); inputRectRef.current = null }}
+          onClose={() => { setQuery(''); setSelectedIndex(0) }}
         />,
         document.body
       )}

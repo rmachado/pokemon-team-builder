@@ -1,6 +1,6 @@
 import { Generations } from '@pkmn/data'
 import { Dex, toID } from '@pkmn/dex'
-import type { VGCFormat } from '../types'
+import type { VGCFormat } from '@/types'
 
 const gens = new Generations(Dex)
 
@@ -19,16 +19,16 @@ export const VGC_FORMATS: VGCFormat[] = [
 
 export function getAllPokemon(genNum: number = 9) {
   const gen = getGen(genNum)
-  const result: { name: string; types: string[]; abilities: string[]; baseStats: Record<string, number> }[] = []
+  const result: { name: string; types: string[]; abilities: string[]; baseStats: Record<string, number>; learnset?: Record<string, string[]> }[] = []
   for (const s of gen.species) {
     if (!s.name || s.name.includes('(') || s.name.includes('-*')) continue
-    const dex = s as unknown as Record<string, unknown>
-    if (dex.isNonstandard === 'CAP') continue
+    if (s.isNonstandard === 'CAP') continue
     result.push({
       name: s.name,
       types: (s.types ?? []) as string[],
       abilities: Object.values(s.abilities ?? {}).filter(Boolean) as string[],
       baseStats: s.baseStats as Record<string, number>,
+      learnset: (s as { learnset?: Record<string, string[]> }).learnset,
     })
   }
   return result
@@ -132,11 +132,6 @@ export const TYPE_CHART: Record<string, Record<string, number>> = {
   Fairy: { Fighting: 2, Poison: 0.5, Bug: 0.5, Dragon: 2, Dark: 2, Steel: 0.5 },
 }
 
-export function calcStat(base: number, iv: number, ev: number, level: number, nature: number): number {
-  const stat = Math.floor((2 * base + iv + Math.floor(ev / 4)) * level / 100 + 5)
-  return Math.floor(stat * nature)
-}
-
 export function getNatureMultiplier(nature: string, stat: string): number {
   const natures: Record<string, [string, string]> = {
     Adamant: ['atk', 'spa'], Bold: ['def', 'atk'], Brave: ['atk', 'spe'],
@@ -177,7 +172,9 @@ export async function getLearnableMoveNames(species: string): Promise<string[]> 
           .map(m => m.charAt(0).toUpperCase() + m.slice(1))
           .sort()
       }
-    } catch {}
+    } catch {
+      // learnset not available for this form
+    }
     return null
   }
 

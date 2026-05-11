@@ -1,5 +1,6 @@
 import { getAllPokemon } from './pkmn'
-import type { SearchMatch } from '../types'
+import { SearchEngine } from '@/domain'
+import type { SearchMatch } from '@/types'
 
 const GEN_NUM = 9
 
@@ -31,16 +32,12 @@ export function buildSearchIndex(genNum: number = GEN_NUM): SearchIndex {
   if (cachedIndex) return cachedIndex
 
   const allPokemon = getAllPokemon(genNum)
-  const speciesList: SpeciesData[] = allPokemon.map(p => {
-    const sp = (p as unknown as Record<string, unknown>)
-    const learnset = sp.learnset as Record<string, string[]> | undefined
-    return {
-      name: p.name,
-      types: p.types,
-      abilities: p.abilities,
-      learnset,
-    }
-  })
+  const speciesList: SpeciesData[] = allPokemon.map(p => ({
+    name: p.name,
+    types: p.types,
+    abilities: p.abilities,
+    learnset: p.learnset,
+  }))
 
   const byName = new Map<string, SpeciesData>()
   const byType = new Map<string, SpeciesData[]>()
@@ -81,45 +78,20 @@ export function clearSearchCache() {
   cachedIndex = null
 }
 
-function fuzzyScore(query: string, target: string): number {
-  const q = query.toLowerCase().trim()
-  const t = target.toLowerCase()
-
-  if (q === t) return 100
-  if (t.startsWith(q)) return 85 - Math.min(q.length * 2, 30) // shorter exact prefix = higher score
-  if (t.includes(q)) return 70 - Math.min(q.length, 10) // contains
-  if (q.includes(t)) return 50 + Math.min(t.length * 3, 20) // query contains target
-
-  const qWords = q.split(/\s+/)
-  let wordScore = 0
-  for (const w of qWords) {
-    if (t.includes(w)) wordScore += 30
-  }
-  if (wordScore > 0) return Math.min(wordScore, 55)
-
-  let matches = 0
-  for (let i = 0; i < q.length && i < t.length; i++) {
-    if (q[i] === t[i]) matches++
-  }
-  if (matches >= 2) return matches * 3
-
-  return -1
-}
-
 function collectMatches(query: string, index: SearchIndex): { species: string; kind: MatchKind; matchDetail: string; score: number }[] {
   const results: { species: string; kind: MatchKind; matchDetail: string; score: number }[] = []
   const q = query.toLowerCase().trim()
   if (!q) return results
 
   for (const [, sp] of index.byName) {
-    const score = fuzzyScore(query, sp.name)
+    const score = SearchEngine.score(query, sp.name)
     if (score > 0) {
       results.push({ species: sp.name, kind: 'name' as MatchKind, matchDetail: sp.name, score })
     }
   }
 
   for (const [typeName, species] of index.byType) {
-    const score = fuzzyScore(query, typeName)
+    const score = SearchEngine.score(query, typeName)
     if (score > 0) {
       for (const sp of species) {
         results.push({ species: sp.name, kind: 'type' as MatchKind, matchDetail: typeName, score: score - 5 })
@@ -128,7 +100,7 @@ function collectMatches(query: string, index: SearchIndex): { species: string; k
   }
 
   for (const [abilityName, species] of index.byAbility) {
-    const score = fuzzyScore(query, abilityName)
+    const score = SearchEngine.score(query, abilityName)
     if (score > 0) {
       for (const sp of species) {
         results.push({ species: sp.name, kind: 'ability' as MatchKind, matchDetail: abilityName, score: score - 10 })
@@ -137,7 +109,7 @@ function collectMatches(query: string, index: SearchIndex): { species: string; k
   }
 
   for (const [moveName, species] of index.byMove) {
-    const score = fuzzyScore(query, moveName)
+    const score = SearchEngine.score(query, moveName)
     if (score > 0) {
       for (const sp of species) {
         results.push({ species: sp.name, kind: 'move' as MatchKind, matchDetail: moveName, score: score - 7 })

@@ -1,5 +1,5 @@
 import { calculate, Pokemon, Move, Field, Generations } from '@smogon/calc'
-import type { PokemonSet, Stats, MoveDamageResult } from '../types'
+import type { PokemonSet, Stats, MoveDamageResult } from '@/types'
 
 const gen = Generations.get(9)
 
@@ -62,7 +62,7 @@ export function calcDamage(
   let minDmg = minDmgRaw
   let maxDmg = maxDmgRaw
 
-  if (options?.spread || SPREAD_MOVES.has(moveName)) {
+  if (options?.spread ?? SPREAD_MOVES.has(moveName)) {
     minDmg = Math.floor(minDmg * SPREAD_MULTIPLIER)
     maxDmg = Math.floor(maxDmg * SPREAD_MULTIPLIER)
   }

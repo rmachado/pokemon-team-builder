@@ -2,8 +2,9 @@ import { useState, useMemo, useRef, useEffect, type KeyboardEvent } from 'react'
 import { Virtuoso } from 'react-virtuoso'
 import { Search, X, Loader2 } from 'lucide-react'
 import { Dex, toID } from '@pkmn/dex'
-import { getAllPokemon, getPokemonNum, getMoves } from '../../lib/pkmn'
-import { TYPE_COLORS } from '../../lib/theme'
+import { getAllPokemon, getPokemonNum, getMoves } from '@/lib/pkmn'
+import { TYPE_COLORS } from '@/lib/theme'
+import { SearchEngine } from '@/domain'
 
 interface PokemonEditorProps {
   onSelect: (species: string) => void
@@ -12,16 +13,6 @@ interface PokemonEditorProps {
 }
 
 type FilterChip = { kind: 'type' | 'ability' | 'move'; value: string }
-
-function fuzzyScore(query: string, target: string): number {
-  const q = query.toLowerCase().trim()
-  const t = target.toLowerCase()
-  if (q === t) return 100
-  if (t.startsWith(q)) return 85
-  if (t.includes(q)) return 70
-  for (const w of q.split(/\s+/)) { if (t.includes(w)) return 30 }
-  return -1
-}
 
 export function PokemonEditor({ onSelect, onAdvance, exclude = [] }: PokemonEditorProps) {
   const [query, setQuery] = useState('')
@@ -32,8 +23,8 @@ export function PokemonEditor({ onSelect, onAdvance, exclude = [] }: PokemonEdit
   const [cacheVersion, setCacheVersion] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const searchAreaRef = useRef<HTMLDivElement>(null)
-  const allMons = useMemo(() => getAllPokemon(9), [])
-  const allMoves = useMemo(() => getMoves(9), [])
+  const allMons = getAllPokemon(9)
+  const allMoves = getMoves(9)
 
   const learnsetCache = useRef<Map<string, Set<string>>>(new Map())
 
@@ -54,9 +45,13 @@ export function PokemonEditor({ onSelect, onAdvance, exclude = [] }: PokemonEdit
     if (moveChips.length === 0) return
 
     let canceled = false
-    setLoadingCache(true)
 
     async function load() {
+      const needsLoad = prefilt.some(m => !learnsetCache.current.has(m.name))
+      if (!needsLoad) return
+
+      setLoadingCache(true)
+
       for (const m of prefilt) {
         if (canceled) break
         if (learnsetCache.current.has(m.name)) continue
@@ -69,7 +64,10 @@ export function PokemonEditor({ onSelect, onAdvance, exclude = [] }: PokemonEdit
           if (!canceled) learnsetCache.current.set(m.name, new Set())
         }
       }
-      if (!canceled) { setLoadingCache(false); setCacheVersion(v => v + 1) }
+      if (!canceled) {
+        setLoadingCache(false)
+        setCacheVersion(v => v + 1)
+      }
     }
     load()
     return () => { canceled = true }
@@ -94,12 +92,12 @@ export function PokemonEditor({ onSelect, onAdvance, exclude = [] }: PokemonEdit
         if (!typesSeen.has(tl) && q.length <= tl.length && tl.startsWith(q) && !types.includes(t)) types.push(t)
       }
       for (const a of mon.abilities) {
-        if (a && !abilsSeen.has(a.toLowerCase()) && fuzzyScore(query, a) > 50 && !abilities.includes(a)) abilities.push(a)
+        if (a && !abilsSeen.has(a.toLowerCase()) && SearchEngine.score(query, a) > 50 && !abilities.includes(a)) abilities.push(a)
       }
     }
 
     for (const m of allMoves) {
-      if (!movesSeen.has(m.name.toLowerCase()) && fuzzyScore(query, m.name) > 50) {
+      if (!movesSeen.has(m.name.toLowerCase()) && SearchEngine.score(query, m.name) > 50) {
         moves.push(m.name)
         if (moves.length >= 10) break
       }
@@ -110,21 +108,25 @@ export function PokemonEditor({ onSelect, onAdvance, exclude = [] }: PokemonEdit
 
   // Filtered list (all filters including moves)
   const filtered = useMemo(() => {
+    // cacheVersion is used to trigger re-computation when learnset cache updates
+    void cacheVersion
+    // eslint-disable-next-line react-hooks/refs -- copying ref data into snapshot is safe inside useMemo
+    const cacheSnapshot = new Map(learnsetCache.current)
     let mons = prefilt
     for (const chip of chips) {
       if (chip.kind !== 'move') continue
       const moveId = toID(chip.value)
-      mons = mons.filter(m => learnsetCache.current.get(m.name)?.has(moveId))
+      mons = mons.filter(m => cacheSnapshot.get(m.name)?.has(moveId))
     }
     if (!query.trim()) return mons.sort((a, b) => a.name.localeCompare(b.name))
     return mons
-      .map(m => ({ mon: m, score: fuzzyScore(query, m.name) }))
+      .map(m => ({ mon: m, score: SearchEngine.score(query, m.name) }))
       .filter(m => m.score > 0)
       .sort((a, b) => b.score - a.score)
       .map(s => s.mon)
   }, [prefilt, chips, query, cacheVersion])
 
-  useEffect(() => { setFocusedIdx(-1); setShowSuggestions(true) }, [query, chips])
+  // Reset focus when query/chips change - done via onChange handlers instead of effect
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -150,6 +152,8 @@ export function PokemonEditor({ onSelect, onAdvance, exclude = [] }: PokemonEdit
       setChips(prev => [...prev, chip])
     }
     setQuery('')
+    setFocusedIdx(-1)
+    setShowSuggestions(true)
     inputRef.current?.focus()
   }
 
@@ -237,7 +241,7 @@ export function PokemonEditor({ onSelect, onAdvance, exclude = [] }: PokemonEdit
           ref={inputRef}
           type="text"
           value={query}
-          onChange={e => setQuery(e.target.value)}
+          onChange={e => { setQuery(e.target.value); setFocusedIdx(-1); setShowSuggestions(true) }}
           onKeyDown={handleSearchKeyDown}
           placeholder={`Search ${allMons.length} Pokémon...`}
           className="w-full bg-gray-800 border border-gray-600 rounded-lg pl-8 pr-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"

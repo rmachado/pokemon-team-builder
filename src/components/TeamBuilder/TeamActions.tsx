@@ -1,18 +1,13 @@
 import { useState } from 'react'
 import { Download, Upload, Save, Plus, Copy } from 'lucide-react'
-import { Button } from '../ui/Button'
-import { Modal } from '../ui/Modal'
-import { exportTeamToShowdown, importTeamFromShowdown } from '../../lib/importExport'
-import type { PokemonSet } from '../../types'
+import { Button } from '@/components/ui/Button'
+import { Modal } from '@/components/ui/Modal'
+import { exportTeamToShowdown, importTeamFromShowdown } from '@/lib/importExport'
+import { useTeamStore, useFormatStore } from '@/stores'
 
-interface TeamActionsProps {
-  pokemon: PokemonSet[]
-  onImport: (mons: PokemonSet[]) => void
-  onReset: () => void
-  onSave: (name: string) => void
-}
-
-export function TeamActions({ pokemon, onImport, onReset, onSave }: TeamActionsProps) {
+export function TeamActions() {
+  const { currentTeam, importTeam, resetTeam, saveCurrentTeam } = useTeamStore()
+  const { currentFormat } = useFormatStore()
   const [showExport, setShowExport] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [showSave, setShowSave] = useState(false)
@@ -20,12 +15,12 @@ export function TeamActions({ pokemon, onImport, onReset, onSave }: TeamActionsP
   const [importText, setImportText] = useState('')
   const [importError, setImportError] = useState('')
 
-  const exportText = exportTeamToShowdown(pokemon)
+  const exportText = exportTeamToShowdown(currentTeam)
 
   function handleImport() {
     try {
       const mons = importTeamFromShowdown(importText)
-      onImport(mons)
+      importTeam(mons)
       setShowImport(false)
       setImportText('')
       setImportError('')
@@ -58,7 +53,7 @@ export function TeamActions({ pokemon, onImport, onReset, onSave }: TeamActionsP
       <Button variant="secondary" size="sm" onClick={() => setShowSave(true)}>
         <Save className="w-3 h-3" /> Save
       </Button>
-      <Button variant="ghost" size="sm" onClick={onReset}>
+      <Button variant="ghost" size="sm" onClick={resetTeam}>
         <Plus className="w-3 h-3" /> New
       </Button>
 
@@ -101,7 +96,7 @@ export function TeamActions({ pokemon, onImport, onReset, onSave }: TeamActionsP
           className="mt-3"
           onClick={() => {
             if (teamName.trim()) {
-              onSave(teamName.trim())
+              saveCurrentTeam(teamName.trim(), currentFormat.id)
               setShowSave(false)
               setTeamName('')
             }

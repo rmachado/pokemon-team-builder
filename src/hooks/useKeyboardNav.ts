@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import type { EditTarget } from '../components/TeamBuilder/EditingPanel'
+import type { EditTarget } from '@/components/TeamBuilder/EditingPanel'
 
 interface KeyboardNavOptions {
   onEditSlot: (slotIndex: number) => void

@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
-import type { PokemonSet, MetaPokemonStats } from '../../types'
-import { calcMatchup } from '../../lib/calc'
-import { getTopMoves, getTopItem, getTopAbility } from '../../lib/meta'
+import type { PokemonSet, MetaPokemonStats } from '@/types'
+import { Pokemon, DamageCalculator } from '@/domain'
 
 interface MatchupTableProps {
   team: PokemonSet[]
@@ -24,26 +23,8 @@ export function MatchupTable({ team, metaData, loading }: MatchupTableProps) {
       if (!mon.species) continue
 
       for (const meta of topMeta) {
-        const topMoves = getTopMoves(meta, 4)
-        const topItem = getTopItem(meta)
-        const topAbility = getTopAbility(meta)
-
-        const commonSet: PokemonSet = {
-          species: meta.species,
-          item: topItem,
-          ability: topAbility,
-          moves: topMoves.slice(0, 4).concat(['', '', '', '']).slice(0, 4) as [string, string, string, string],
-          nature: 'Adamant',
-          evs: { hp: 252, atk: 252, def: 0, spa: 0, spd: 0, spe: 0 },
-          ivs: { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 },
-          teraType: '',
-          level: 50,
-        }
-
-        const teras = Object.entries(meta.teraTypes).sort((a, b) => b[1] - a[1])
-        if (teras[0]) commonSet.teraType = teras[0][0]
-
-        const calcResults = calcMatchup(mon, commonSet)
+        const commonSet = DamageCalculator.buildFromMeta(meta)
+        const calcResults = DamageCalculator.calculateMatchup(Pokemon.fromJSON(mon), commonSet)
         results.push({
           yourMon: mon.species,
           theirMon: meta.species,

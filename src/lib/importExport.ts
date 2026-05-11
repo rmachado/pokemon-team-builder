@@ -1,5 +1,5 @@
 import { Team as PkmnTeam } from '@pkmn/sets'
-import type { PokemonSet } from '../types'
+import type { PokemonSet } from '@/types'
 
 export function importTeamFromShowdown(text: string): PokemonSet[] {
   const parsed = PkmnTeam.import(text)
@@ -8,17 +8,16 @@ export function importTeamFromShowdown(text: string): PokemonSet[] {
   }
 
   return parsed.team.map((s) => {
-    const sAny = s as Record<string, unknown>
-    const moves = (sAny.moves as string[] | undefined) || []
-    const evsObj = sAny.evs as Record<string, number> | undefined
-    const ivsObj = sAny.ivs as Record<string, number> | undefined
+    const moves = (s.moves as string[] | undefined) || []
+    const evsObj = s.evs as Record<string, number> | undefined
+    const ivsObj = s.ivs as Record<string, number> | undefined
 
     return {
-      species: (sAny.species as string) || (sAny.name as string) || '',
-      item: (sAny.item as string) || '',
-      ability: (sAny.ability as string) || '',
+      species: (s.species as string) || (s.name as string) || '',
+      item: (s.item as string) || '',
+      ability: (s.ability as string) || '',
       moves: moves.length >= 4 ? moves.slice(0, 4) : [...moves, '', '', ''].slice(0, 4),
-      nature: (sAny.nature as string) || 'Serious',
+      nature: (s.nature as string) || 'Serious',
       evs: {
         hp: evsObj?.hp ?? 0,
         atk: evsObj?.atk ?? 0,
@@ -35,8 +34,8 @@ export function importTeamFromShowdown(text: string): PokemonSet[] {
         spd: ivsObj?.spd ?? 31,
         spe: ivsObj?.spe ?? 31,
       },
-      teraType: (sAny.teraType as string) || '',
-      level: (sAny.level as number) || 50,
+      teraType: (s.teraType as string) || '',
+      level: (s.level as number) || 50,
     }
   })
 }

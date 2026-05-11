@@ -1,23 +1,13 @@
-import { useState, useMemo, useRef, useCallback, useEffect, type KeyboardEvent } from 'react'
+import { useState, useMemo, useRef, useCallback, type KeyboardEvent } from 'react'
 import { Search, Shield } from 'lucide-react'
-import { getAbility } from '../../lib/pkmn'
+import { getAbility } from '@/lib/pkmn'
+import { SearchEngine } from '@/domain'
 
 interface AbilityEditorProps {
   current: string
   onSelect: (ability: string) => void
   onAdvance?: () => void
   speciesAbilities?: string[]
-}
-
-function fuzzyScore(query: string, target: string): number {
-  const q = query.toLowerCase().trim()
-  const t = target.toLowerCase()
-  if (q === t) return 100
-  if (t.startsWith(q)) return 85
-  if (t.includes(q)) return 70
-  const qWords = q.split(/\s+/)
-  for (const w of qWords) { if (t.includes(w)) return 30 }
-  return -1
 }
 
 export function AbilityEditor({ current, onSelect, onAdvance, speciesAbilities }: AbilityEditorProps) {
@@ -28,7 +18,7 @@ export function AbilityEditor({ current, onSelect, onAdvance, speciesAbilities }
   const abilities = useMemo(() => speciesAbilities ?? [], [speciesAbilities])
 
   const filtered = useMemo(() => {
-    const mapped = abilities.map(a => ({ name: a, score: fuzzyScore(query, a) }))
+    const mapped = abilities.map(a => ({ name: a, score: SearchEngine.score(query, a) }))
 
     if (!query.trim()) return mapped.sort((a, b) => a.name.localeCompare(b.name))
 
@@ -37,16 +27,15 @@ export function AbilityEditor({ current, onSelect, onAdvance, speciesAbilities }
       .sort((a, b) => b.score - a.score)
   }, [query, abilities])
 
-  useEffect(() => {
-    if (focusedIndex >= filtered.length) setFocusedIndex(filtered.length - 1)
-  }, [filtered.length, focusedIndex])
+  const safeFocusedIndex = focusedIndex >= filtered.length ? filtered.length - 1 : focusedIndex
 
   const focusItem = useCallback((idx: number) => {
-    setFocusedIndex(idx)
-    const btn = itemRefs.current.get(idx)
+    const safeIdx = idx >= filtered.length ? filtered.length - 1 : idx
+    setFocusedIndex(safeIdx)
+    const btn = itemRefs.current.get(safeIdx)
     btn?.focus()
     btn?.scrollIntoView({ block: 'nearest' })
-  }, [])
+  }, [filtered.length])
 
   function handleSearchKeyDown(e: KeyboardEvent) {
     if (e.key === 'ArrowDown' && filtered.length > 0) {
@@ -81,7 +70,7 @@ export function AbilityEditor({ current, onSelect, onAdvance, speciesAbilities }
           ref={inputRef}
           type="text"
           value={query}
-          onChange={e => setQuery(e.target.value)}
+          onChange={e => { setQuery(e.target.value); setFocusedIndex(-1) }}
           onKeyDown={handleSearchKeyDown}
           placeholder={`Filter abilities... (${abilities.length} available)`}
           className="w-full bg-gray-800 border border-gray-600 rounded-lg pl-8 pr-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
@@ -92,7 +81,7 @@ export function AbilityEditor({ current, onSelect, onAdvance, speciesAbilities }
       <div className="flex-1 min-h-0 overflow-y-auto space-y-1 p-1">
         {filtered.map(({ name }, idx) => {
           const isSelected = name === current
-          const data = getAbility(name) as Record<string, unknown> | undefined
+          const data = getAbility(name)
           const desc = (data?.desc as string) || (data?.shortDesc as string) || ''
 
           return (
@@ -101,7 +90,7 @@ export function AbilityEditor({ current, onSelect, onAdvance, speciesAbilities }
               ref={el => { if (el) itemRefs.current.set(idx, el); else itemRefs.current.delete(idx) }}
               onClick={() => { onSelect(name); setQuery(''); setFocusedIndex(-1); inputRef.current?.focus(); onAdvance?.() }}
               onKeyDown={e => handleItemKeyDown(e, idx, name)}
-              tabIndex={focusedIndex === idx ? 0 : -1}
+              tabIndex={safeFocusedIndex === idx ? 0 : -1}
               className={`w-full text-left rounded-xl p-3 transition-colors border-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 ${
                 isSelected
                   ? 'border-blue-400 bg-blue-600/10'

@@ -1,50 +1,27 @@
 import { useState } from 'react'
 import { Calculator } from 'lucide-react'
-import { calcDamage } from '../../lib/calc'
 import { SmartSearch } from '../SmartSearch'
-import { Button } from '../ui/Button'
-import type { PokemonSet, MoveDamageResult } from '../../types'
-
-interface AttackerConfig {
-  species: string
-  item: string
-  ability: string
-  nature: string
-  evs: Record<string, number>
-  level: number
-  move: string
-}
+import { Button } from '@/components/ui/Button'
+import type { MoveDamageResult } from '@/types'
+import { DamageCalculator } from '@/domain'
+import type { DamageConfig } from '@/domain'
 
 export function DamageCalcPanel() {
-  const [attacker, setAttacker] = useState<AttackerConfig>({
+  const [attacker, setAttacker] = useState<DamageConfig>({
     species: '', item: '', ability: '', nature: 'Adamant',
     evs: { atk: 252, spe: 252 }, level: 50, move: '',
   })
-  const [defender, setDefender] = useState<AttackerConfig>({
+  const [defender, setDefender] = useState<DamageConfig>({
     species: '', item: '', ability: '', nature: 'Bold',
     evs: { hp: 252, def: 252 }, level: 50, move: '',
   })
   const [results, setResults] = useState<MoveDamageResult[] | null>(null)
 
-  function toPokemonSet(cfg: AttackerConfig): PokemonSet {
-    return {
-      species: cfg.species,
-      item: cfg.item,
-      ability: cfg.ability,
-      moves: [cfg.move, '', '', ''],
-      nature: cfg.nature,
-      evs: { hp: cfg.evs.hp || 0, atk: cfg.evs.atk || 0, def: cfg.evs.def || 0, spa: cfg.evs.spa || 0, spd: cfg.evs.spd || 0, spe: cfg.evs.spe || 0 },
-      ivs: { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 },
-      teraType: '',
-      level: cfg.level,
-    }
-  }
-
   function handleCalc() {
     if (!attacker.species || !defender.species || !attacker.move) return
-    const atkSet = toPokemonSet(attacker)
-    const defSet = toPokemonSet(defender)
-    const result = calcDamage(atkSet, defSet, attacker.move)
+    const atkPkm = DamageCalculator.buildFromConfig(attacker)
+    const defPkm = DamageCalculator.buildFromConfig(defender)
+    const result = DamageCalculator.calculateSingle(atkPkm, defPkm, attacker.move)
     setResults([result])
   }
 

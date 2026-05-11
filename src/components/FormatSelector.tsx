@@ -1,6 +1,6 @@
 import { ChevronDown } from 'lucide-react'
 import * as Select from '@radix-ui/react-select'
-import type { VGCFormat } from '../types'
+import type { VGCFormat } from '@/types'
 
 interface FormatSelectorProps {
   formats: VGCFormat[]

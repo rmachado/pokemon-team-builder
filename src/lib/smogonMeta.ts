@@ -1,4 +1,4 @@
-import type { MetaPokemonStats } from '../types'
+import type { MetaPokemonStats } from '@/types'
 
 const SMOGON_STATS_BASE = 'https://www.smogon.com/stats'
 
@@ -128,7 +128,7 @@ export async function fetchMetaStats(format: string): Promise<MetaPokemonStats[]
 function getFallbackMeta(): MetaPokemonStats[] {
   const topMons = [
     'Incineroar', 'Rillaboom', 'Urshifu', 'Tornadus', 'Landorus',
-    'Ogerpon', 'Flutter Mane', 'Amogus', 'Gholdengo', 'Dragonite',
+    'Ogerpon', 'Flutter Mane', 'Amoonguss', 'Gholdengo', 'Dragonite',
     'Sneasler', 'Chien-Pao', 'Chi-Yu', 'Heatran', 'Pelipper',
   ]
 
@@ -143,33 +143,4 @@ function getFallbackMeta(): MetaPokemonStats[] {
     evs: {},
     teammates: {},
   }))
-}
-
-interface TopMonEntry {
-  species: string
-  usage: number
-}
-
-export function getTopMons(stats: MetaPokemonStats[], count: number = 15): TopMonEntry[] {
-  return stats
-    .sort((a, b) => b.usage - a.usage)
-    .slice(0, count)
-    .map(s => ({ species: s.species, usage: s.usage }))
-}
-
-export function getTopMoves(stats: MetaPokemonStats, count: number = 4): string[] {
-  return Object.entries(stats.moves)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, count)
-    .map(([name]) => name)
-}
-
-export function getTopItem(stats: MetaPokemonStats): string {
-  const sorted = Object.entries(stats.items).sort((a, b) => b[1] - a[1])
-  return sorted[0]?.[0] || ''
-}
-
-export function getTopAbility(stats: MetaPokemonStats): string {
-  const sorted = Object.entries(stats.abilities).sort((a, b) => b[1] - a[1])
-  return sorted[0]?.[0] || ''
 }

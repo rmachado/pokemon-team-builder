@@ -1,6 +1,6 @@
 import { ArrowUpFromLine, Trash2 } from 'lucide-react'
 import { useMemo } from 'react'
-import type { PokemonSet, Team } from '../../types'
+import type { PokemonSet, Team } from '@/types'
 
 interface TeamComparisonProps {
   yourTeam: PokemonSet[]

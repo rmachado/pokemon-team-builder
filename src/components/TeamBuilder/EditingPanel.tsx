@@ -1,15 +1,16 @@
 import { X, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import type { PokemonSet } from '../../types'
-import { getPokemon, getPokemonNum } from '../../lib/pkmn'
-import { useLearnableMoves } from '../../hooks/useLearnableMoves'
+import type { PokemonSet } from '@/types'
+import { getPokemonNum } from '@/lib/pkmn'
+import { useLearnableMoves } from '@/hooks/useLearnableMoves'
+import { Pokemon } from '@/domain'
 import { PokemonEditor } from './PokemonEditor'
 import { MoveEditor } from './MoveEditor'
 import { ItemEditor } from './ItemEditor'
 import { AbilityEditor } from './AbilityEditor'
 import { StatEditor } from './StatEditor'
 
-interface EditTarget {
+export interface EditTarget {
   slotIndex: number
   field: 'pokemon' | 'move' | 'item' | 'ability' | 'stats'
   moveIndex?: number
@@ -88,11 +89,8 @@ function PanelContent({ editTarget, pokemon, team, learnableMoves, onUpdate, onC
     onUpdate(slotIndex, updated)
   }
 
-  const dexSpecies = pokemon.species ? getPokemon(pokemon.species) : null
-  const dexAny = dexSpecies as unknown as Record<string, unknown> | null
-  const speciesAbilities = dexAny?.abilities
-    ? Object.values(dexAny.abilities as Record<string, string>).filter(Boolean)
-    : []
+  const p = Pokemon.fromJSON(pokemon)
+  const speciesAbilities = Pokemon.getSpeciesAbilities(pokemon.species)
   const usedSpecies = team.filter(p => p.species).map(p => p.species)
   const num = pokemon.species ? getPokemonNum(pokemon.species) : 0
 
@@ -130,19 +128,7 @@ function PanelContent({ editTarget, pokemon, team, learnableMoves, onUpdate, onC
         {field === 'pokemon' && (
           <PokemonEditor
             onSelect={species => {
-              const newDex = getPokemon(species)
-              const newDexAny = newDex as unknown as Record<string, unknown> | undefined
-              const abilities = newDexAny?.abilities
-                ? Object.values(newDexAny.abilities as Record<string, string>).filter(Boolean)
-                : []
-              const newTypes = newDexAny?.types as string[] | undefined || []
-              updatePokemon({
-                ...pokemon,
-                species,
-                ability: abilities[0] || '',
-                teraType: newTypes[0] || '',
-                moves: ['', '', '', ''],
-              })
+              updatePokemon(p.withSpecies(species).toJSON())
               onAdvance?.()
             }}
             exclude={usedSpecies}
@@ -159,9 +145,7 @@ function PanelContent({ editTarget, pokemon, team, learnableMoves, onUpdate, onC
               current={pokemon.moves[moveIndex]}
               learnableMoves={learnableMoves}
               onSelect={move => {
-                const moves = [...pokemon.moves]
-                moves[moveIndex] = move
-                updatePokemon({ ...pokemon, moves })
+                updatePokemon(p.withMove(moveIndex, move).toJSON())
               }}
               onAdvance={onAdvance}
             />
@@ -170,14 +154,14 @@ function PanelContent({ editTarget, pokemon, team, learnableMoves, onUpdate, onC
         {field === 'item' && (
             <ItemEditor
               current={pokemon.item}
-              onSelect={item => updatePokemon({ ...pokemon, item })}
+              onSelect={item => updatePokemon(p.withItem(item).toJSON())}
               onAdvance={onAdvance}
             />
           )}
           {field === 'ability' && (
             <AbilityEditor
               current={pokemon.ability}
-              onSelect={ability => updatePokemon({ ...pokemon, ability })}
+              onSelect={ability => updatePokemon(p.withAbility(ability).toJSON())}
               speciesAbilities={speciesAbilities}
               onAdvance={onAdvance}
             />
@@ -189,5 +173,3 @@ function PanelContent({ editTarget, pokemon, team, learnableMoves, onUpdate, onC
     </motion.div>
   )
 }
-
-export type { EditTarget }

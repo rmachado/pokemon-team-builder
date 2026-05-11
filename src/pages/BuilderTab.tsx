@@ -1,21 +1,14 @@
 import { useState, useCallback } from 'react'
 import { AnimatePresence } from 'framer-motion'
-import type { PokemonSet } from '../types'
-import { PokemonCard } from '../components/TeamBuilder/PokemonCard'
-import { TeamActions } from '../components/TeamBuilder/TeamActions'
-import { EditingPanel } from '../components/TeamBuilder/EditingPanel'
-import type { EditTarget } from '../components/TeamBuilder/EditingPanel'
-import { useKeyboardNav } from '../hooks/useKeyboardNav'
+import { PokemonCard } from '@/components/TeamBuilder/PokemonCard'
+import { TeamActions } from '@/components/TeamBuilder/TeamActions'
+import { EditingPanel } from '@/components/TeamBuilder/EditingPanel'
+import type { EditTarget } from '@/components/TeamBuilder/EditingPanel'
+import { useKeyboardNav } from '@/hooks/useKeyboardNav'
+import { useTeamStore, useFormatStore } from '@/stores'
 
-interface BuilderTabProps {
-  team: PokemonSet[]
-  onUpdate: (index: number, pokemon: PokemonSet) => void
-  onImport: (mons: PokemonSet[]) => void
-  onReset: () => void
-  onSave: (name: string) => void
-}
-
-export function BuilderTab({ team, onUpdate, onImport, onReset, onSave }: BuilderTabProps) {
+export function BuilderTab() {
+  const { currentTeam, updatePokemon, saveCurrentTeam } = useTeamStore()
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null)
 
   function handleEdit(slotIndex: number, field: string, moveIndex?: number) {
@@ -33,9 +26,13 @@ export function BuilderTab({ team, onUpdate, onImport, onReset, onSave }: Builde
     if (field === 'item') return setEditTarget({ slotIndex, field: 'ability' })
     if (field === 'ability') return setEditTarget({ slotIndex, field: 'stats' })
   }, [editTarget])
+
   const importFn = useCallback(() => {}, [])
   const exportFn = useCallback(() => {}, [])
-  const saveFn = useCallback(() => onSave('Quick Save'), [onSave])
+  const saveFn = useCallback(() => {
+    const formatId = useFormatStore.getState().currentFormat.id
+    saveCurrentTeam('Quick Save', formatId)
+  }, [saveCurrentTeam])
 
   useKeyboardNav({
     onEditSlot: (i) => handleEdit(i, 'pokemon'),
@@ -52,17 +49,12 @@ export function BuilderTab({ team, onUpdate, onImport, onReset, onSave }: Builde
       <div className="flex flex-col flex-1 min-w-0 min-h-0">
         <div className="flex items-center justify-between mb-3 shrink-0">
           <h2 className="text-sm font-semibold text-gray-300">Team Builder</h2>
-          <TeamActions
-            pokemon={team}
-            onImport={onImport}
-            onReset={onReset}
-            onSave={onSave}
-          />
+          <TeamActions />
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-2 pr-1" style={{ minHeight: 0 }}>
           <AnimatePresence>
-            {team.map((pokemon, i) => (
+            {currentTeam.map((pokemon, i) => (
               <PokemonCard
                 key={i}
                 pokemon={pokemon}
@@ -78,8 +70,8 @@ export function BuilderTab({ team, onUpdate, onImport, onReset, onSave }: Builde
       <div className="hidden sm:block sm:w-80 lg:w-96 shrink-0">
         <EditingPanel
           editTarget={editTarget}
-          team={team}
-          onUpdate={onUpdate}
+          team={currentTeam}
+          onUpdate={updatePokemon}
           onClose={() => setEditTarget(null)}
           onAdvanceMove={handleAdvanceMove}
         />
@@ -90,8 +82,8 @@ export function BuilderTab({ team, onUpdate, onImport, onReset, onSave }: Builde
           <div className="absolute bottom-0 left-0 right-0 max-h-[70dvh] rounded-t-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <EditingPanel
               editTarget={editTarget}
-              team={team}
-              onUpdate={onUpdate}
+              team={currentTeam}
+              onUpdate={updatePokemon}
               onClose={() => setEditTarget(null)}
               onAdvanceMove={handleAdvanceMove}
             />

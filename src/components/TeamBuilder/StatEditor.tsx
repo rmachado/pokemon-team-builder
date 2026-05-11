@@ -2,10 +2,11 @@ import { useMemo } from 'react'
 import * as Slider from '@radix-ui/react-slider'
 import { motion } from 'framer-motion'
 import { Zap, Archive } from 'lucide-react'
-import type { PokemonSet, Stats, StatName } from '../../types'
-import { NATURES, TYPES, STAT_NAMES, calcStat, getNatureMultiplier, getPokemon } from '../../lib/pkmn'
-import { STAT_COLORS, STAT_LABEL } from '../../lib/theme'
-import { Button } from '../ui/Button'
+import type { PokemonSet, StatName } from '@/types'
+import { NATURES, TYPES, STAT_NAMES, getPokemon, getNatureMultiplier } from '@/lib/pkmn'
+import { STAT_COLORS, STAT_LABEL } from '@/lib/theme'
+import { Button } from '@/components/ui/Button'
+import { Pokemon, StatsCalculator } from '@/domain'
 
 interface StatEditorProps {
   pokemon: PokemonSet
@@ -14,24 +15,17 @@ interface StatEditorProps {
 
 export function StatEditor({ pokemon, onChange }: StatEditorProps) {
   const dexSpecies = useMemo(() => pokemon.species ? getPokemon(pokemon.species) : null, [pokemon.species])
-  const dexAny = dexSpecies as unknown as Record<string, unknown> | null
-  const baseStats = (dexAny?.baseStats ?? {}) as Record<string, number>
-
-  const totalEVs = Object.values(pokemon.evs).reduce((a, b) => a + b, 0)
+    const baseStats = (dexSpecies?.baseStats ?? {}) as Record<string, number>
   const nature = pokemon.nature || 'Serious'
 
+  const p = Pokemon.fromJSON(pokemon)
+
   function updateEVs(stat: StatName, values: number[]) {
-    const clamped = Math.max(0, Math.min(252, values[0] ?? 0))
-    const otherTotal = STAT_NAMES
-      .filter(s => s !== stat)
-      .reduce((sum, s) => sum + (pokemon.evs[s] || 0), 0)
-    const available = 510 - otherTotal
-    const final = Math.min(clamped, Math.max(0, available))
-    onChange({ ...pokemon, evs: { ...pokemon.evs, [stat]: final } as Stats })
+    onChange(p.withEV(stat, values[0] ?? 0).toJSON())
   }
 
   function applyPreset(preset: Record<string, number>) {
-    onChange({ ...pokemon, evs: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0, ...preset } as Stats })
+    onChange(StatsCalculator.applyPreset(p, preset).toJSON())
   }
 
   return (
@@ -42,7 +36,7 @@ export function StatEditor({ pokemon, onChange }: StatEditorProps) {
           const base = baseStats?.[stat] ?? 0
           const ev = pokemon.evs[stat]
           const mult = getNatureMultiplier(nature, stat)
-          const final = calcStat(base, pokemon.ivs[stat], ev, pokemon.level || 50, mult)
+          const final = StatsCalculator.calculate(base, pokemon.ivs[stat], ev, pokemon.level || 50, mult, stat)
           const color = STAT_COLORS[stat]
           const isPlus = mult > 1
           const isMinus = mult < 1
@@ -88,15 +82,15 @@ export function StatEditor({ pokemon, onChange }: StatEditorProps) {
           )
         })}
 
-        <div className={`text-xs text-right font-mono ${totalEVs > 510 ? 'text-red-400' : 'text-gray-500'}`}>
-          {totalEVs}/510
+        <div className={`text-xs text-right font-mono ${p.totalEVs > 510 ? 'text-red-400' : 'text-gray-500'}`}>
+          {p.totalEVs}/510
         </div>
       </div>
 
       {/* Stat bar chart */}
       <div className="space-y-[2px]">
         {STAT_NAMES.map(stat => {
-          const final = calcStat(baseStats?.[stat] ?? 80, pokemon.ivs[stat], pokemon.evs[stat], pokemon.level || 50, getNatureMultiplier(nature, stat))
+          const final = StatsCalculator.calculate(baseStats?.[stat] ?? 80, pokemon.ivs[stat], pokemon.evs[stat], pokemon.level || 50, getNatureMultiplier(nature, stat), stat)
           const color = STAT_COLORS[stat]
           const REF_MAX = 300
 
@@ -140,7 +134,7 @@ export function StatEditor({ pokemon, onChange }: StatEditorProps) {
           <label className="text-xs text-gray-500 block mb-1">Nature</label>
           <select
             value={nature}
-            onChange={e => onChange({ ...pokemon, nature: e.target.value })}
+            onChange={e => onChange(p.withNature(e.target.value).toJSON())}
             className="w-full bg-gray-800 border border-gray-600 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
           >
             {NATURES.map(n => <option key={n} value={n}>{n}</option>)}
@@ -150,7 +144,7 @@ export function StatEditor({ pokemon, onChange }: StatEditorProps) {
           <label className="text-xs text-gray-500 block mb-1">Tera Type</label>
           <select
             value={pokemon.teraType}
-            onChange={e => onChange({ ...pokemon, teraType: e.target.value })}
+            onChange={e => onChange(p.withTeraType(e.target.value).toJSON())}
             className="w-full bg-gray-800 border border-gray-600 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
           >
             <option value="">—</option>

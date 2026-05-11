@@ -1,25 +1,14 @@
 import { useState } from 'react'
 import { Upload, Trash2, ArrowUpFromLine } from 'lucide-react'
-import type { Team } from '../types'
-import { Button } from '../components/ui/Button'
-import { Modal } from '../components/ui/Modal'
-import { importTeamFromShowdown } from '../lib/importExport'
-import { generateId } from '../lib/storage'
+import type { Team } from '@/types'
+import { Button } from '@/components/ui/Button'
+import { Modal } from '@/components/ui/Modal'
+import { useTeamStore, useFormatStore } from '@/stores'
+import { TeamService } from '@/domain'
 
-interface TeamsTabProps {
-  savedTeams: Team[]
-  opposingTeams: Team[]
-  formatId: string
-  onLoadTeam: (team: Team) => void
-  onDeleteTeam: (id: string) => void
-  onAddOpposing: (team: Team) => void
-  onRemoveOpposing: (id: string) => void
-}
-
-export function TeamsTab({
-  savedTeams, opposingTeams, formatId,
-  onLoadTeam, onDeleteTeam, onAddOpposing, onRemoveOpposing,
-}: TeamsTabProps) {
+export function TeamsTab() {
+  const { savedTeams, opposingTeams, loadTeam, deleteTeam, addOpposingTeam, removeOpposingTeam } = useTeamStore()
+  const { currentFormat } = useFormatStore()
   const [showImport, setShowImport] = useState(false)
   const [importText, setImportText] = useState('')
   const [importError, setImportError] = useState('')
@@ -27,19 +16,16 @@ export function TeamsTab({
 
   function handleImport(type: 'saved' | 'opposing') {
     try {
-      const pokemon = importTeamFromShowdown(importText)
-      const team: Team = {
-        id: generateId(),
-        name: teamName || `${type === 'saved' ? 'Team' : 'Opponent'} ${new Date().toLocaleDateString()}`,
-        format: formatId,
+      const pokemon = TeamService.importFromShowdown(importText)
+      const team = TeamService.buildTeam(
+        teamName || (type === 'saved' ? `Team ${new Date().toLocaleDateString()}` : `Opponent ${new Date().toLocaleDateString()}`),
+        currentFormat.id,
         pokemon,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }
+      )
       if (type === 'saved') {
-        onLoadTeam(team)
+        loadTeam(team.toJSON())
       } else {
-        onAddOpposing(team)
+        addOpposingTeam(team.toJSON())
       }
       setShowImport(false)
       setImportText('')
@@ -67,7 +53,7 @@ export function TeamsTab({
           ) : (
             <div className="space-y-2">
               {savedTeams.map(team => (
-                <TeamCard key={team.id} team={team} onLoad={onLoadTeam} onDelete={onDeleteTeam} />
+                <TeamCard key={team.id} team={team} onLoad={loadTeam} onDelete={deleteTeam} />
               ))}
             </div>
           )}
@@ -80,7 +66,7 @@ export function TeamsTab({
           ) : (
             <div className="space-y-2">
               {opposingTeams.map(team => (
-                <TeamCard key={team.id} team={team} onLoad={onLoadTeam} onDelete={onRemoveOpposing} />
+                <TeamCard key={team.id} team={team} onLoad={loadTeam} onDelete={removeOpposingTeam} />
               ))}
             </div>
           )}
