@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
 export default defineConfig({
-  base: '/pokemon-teambuilder/',
+  base: '/pokemon-team-builder/',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
