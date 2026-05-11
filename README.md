@@ -1,73 +1,176 @@
-# React + TypeScript + Vite
+# VGC Team Builder
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A web-based Pokemon team builder focused on VGC (Video Game Championships) competitive formats. Built with React, TypeScript, and Vite.
 
-Currently, two official plugins are available:
+## What It Does
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+This application helps competitive Pokemon players build, analyze, and manage their teams with features including:
 
-## React Compiler
+- **Team Builder**: Create teams of up to 6 Pokemon with full customization (species, moves, items, abilities, EVs/IVs, natures, Tera Types)
+- **Meta Analysis**: View type coverage, matchup tables against the current meta, and Smogon usage statistics
+- **Damage Calculator**: Calculate damage between your team members and common meta threats
+- **Team Comparison**: Compare your team against saved opposing teams
+- **Import/Export**: Support for standard Pokemon Showdown export format
+- **Smart Search**: Intelligent search for Pokemon, moves, items, and abilities
+- **Format Support**: Multiple competitive formats with format-specific rules and data
+- **Local Storage**: Teams are persisted locally in the browser
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+- **Framework**: React 19 + TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS v4
+- **State Management**: Zustand
+- **Animations**: Framer Motion
+- **UI Components**: Radix UI primitives
+- **Icons**: Lucide React
+- **Package Manager**: Bun
+- **Pokemon Data**: [@pkmn](https://github.com/pkmn/ps) ecosystem (@pkmn/data, @pkmn/dex, @pkmn/sim, @pkmn/smogon)
+- **Damage Calculation**: @smogon/calc
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Project Structure
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+├── components/           # React components
+│   ├── ui/              # Reusable UI primitives (Button, Badge, Modal)
+│   ├── TeamBuilder/     # Builder tab components
+│   │   ├── PokemonCard.tsx
+│   │   ├── PokemonEditor.tsx
+│   │   ├── MoveEditor.tsx
+│   │   ├── ItemEditor.tsx
+│   │   ├── AbilityEditor.tsx
+│   │   ├── StatEditor.tsx
+│   │   ├── EditingPanel.tsx
+│   │   └── TeamActions.tsx
+│   ├── Analysis/        # Analysis tab components
+│   │   ├── TypeCoverage.tsx
+│   │   ├── MatchupTable.tsx
+│   │   ├── DamageCalcPanel.tsx
+│   │   └── TeamComparison.tsx
+│   ├── SmartSearch.tsx
+│   ├── FormatSelector.tsx
+│   └── TabBar.tsx
+├── pages/               # Top-level page components (tabs)
+│   ├── BuilderTab.tsx
+│   ├── AnalysisTab.tsx
+│   └── TeamsTab.tsx
+├── domain/              # Domain layer (business logic)
+│   ├── entities/        # Domain entities
+│   │   ├── Pokemon.ts   # Immutable Pokemon entity
+│   │   └── Team.ts      # Immutable Team entity
+│   └── services/        # Domain services
+│       ├── StatsCalculator.ts
+│       ├── DamageCalculator.ts
+│       ├── MetaAnalyzer.ts
+│       ├── SearchEngine.ts
+│       ├── DraftRepository.ts
+│       └── TeamService.ts
+├── stores/              # Zustand state stores
+│   ├── teamStore.ts
+│   ├── formatStore.ts
+│   └── metaStore.ts
+├── hooks/               # Custom React hooks
+│   ├── useLearnableMoves.ts
+│   └── useKeyboardNav.ts
+├── lib/                 # Utility libraries
+│   ├── pkmn.ts          # Pokemon data access
+│   ├── smogonCalc.ts    # Smogon calc integration
+│   ├── smogonMeta.ts    # Smogon meta data fetching
+│   ├── search.ts        # Search utilities
+│   ├── storage.ts       # Local storage helpers
+│   ├── importExport.ts  # Showdown format import/export
+│   └── theme.ts
+├── types/               # TypeScript type definitions
+└── App.tsx              # Root application component
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Architecture Notes
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- **Immutable Domain Models**: `Pokemon` and `Team` are immutable classes using the builder pattern (`withX()` methods). This ensures predictable state changes and easy undo/redo support.
+- **Separation of Concerns**: Domain logic lives in `domain/`, UI in `components/`, and state management in `stores/`.
+- **SPA with Tabs**: The app uses a tab-based navigation (Builder, Analysis, Teams) with Framer Motion transitions.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Getting Started
+
+### Prerequisites
+
+- [Bun](https://bun.sh) installed on your machine
+
+### Installation
+
+```bash
+bun install
 ```
+
+### Development
+
+```bash
+bun run dev
+```
+
+The app will be available at `http://localhost:3000`.
+
+### Build
+
+```bash
+bun run build
+```
+
+The production build will be output to the `dist/` directory.
+
+### Lint
+
+```bash
+bun run lint
+```
+
+## Deployment
+
+This project is configured to deploy automatically to **GitHub Pages** via GitHub Actions.
+
+### Setup
+
+1. Go to your repository on GitHub
+2. Navigate to **Settings** → **Pages**
+3. Under **Build and deployment**, set **Source** to **GitHub Actions**
+
+### How It Works
+
+Every push to the `master` branch triggers the workflow defined in `.github/workflows/deploy.yml`:
+
+1. Runs on Ubuntu latest
+2. Sets up Bun
+3. Installs dependencies (`bun install`)
+4. Runs lint checks (`bun run lint`)
+5. Builds the project (`bun run build`)
+6. Deploys the `dist/` folder to GitHub Pages
+
+The deployed site will be available at `https://<username>.github.io/pokemon-teambuilder/`.
+
+## Keyboard Shortcuts
+
+The builder supports keyboard navigation for quick team editing:
+
+| Key | Action |
+|-----|--------|
+| `1-6` | Edit Pokemon in slot 1-6 |
+| `Esc` | Close editing panel |
+| Navigation arrows | Move between fields |
+
+## Data Sources
+
+- **Pokemon Data**: [@pkmn/dex](https://github.com/pkmn/ps/tree/main/dex) - Complete Pokemon game data
+- **Meta Usage Stats**: [Smogon](https://smogon.com) - Competitive usage statistics
+- **Damage Calculation**: [@smogon/calc](https://github.com/smogon/damage-calc/tree/master/calc) - Official damage formula
+
+## Browser Support
+
+This app uses modern web technologies and is tested on:
+- Chrome / Edge (latest)
+- Firefox (latest)
+- Safari (latest)
+
+## License
+
+This is a fan-made tool for the Pokemon community. Pokemon and all related trademarks are property of Nintendo, Game Freak, and The Pokemon Company.
