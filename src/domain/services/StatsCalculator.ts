@@ -10,7 +10,22 @@ export class StatsCalculator {
     level: number,
     natureMultiplier: number,
     statName: string,
+    useStatPoints = false,
   ): number {
+    if (useStatPoints) {
+      // Champions formula: HP = base + sp + 75, Other = (base + sp + 20) * natureMult
+      const sp = ev
+      if (statName === 'hp') {
+        return base + sp + 75
+      }
+      let stat = base + sp + 20
+      if (natureMultiplier === 1.1) {
+        stat = Math.trunc(Math.trunc(stat * 110) / 100)
+      } else if (natureMultiplier === 0.9) {
+        stat = Math.trunc(Math.trunc(stat * 90) / 100)
+      }
+      return stat
+    }
     if (statName === 'hp') {
       return Math.floor((2 * base + iv + Math.floor(ev / 4)) * level / 100) + level + 10
     }
@@ -22,16 +37,18 @@ export class StatsCalculator {
     return Object.values(evs).reduce((a, b) => a + b, 0)
   }
 
-  static clampEV(stat: string, value: number, currentEVs: Stats): number {
-    const clamped = Math.max(0, Math.min(252, value))
+  static clampEV(stat: string, value: number, currentEVs: Stats, useStatPoints = false): number {
+    const maxPerStat = useStatPoints ? 32 : 252
+    const totalLimit = useStatPoints ? 66 : 510
+    const clamped = Math.max(0, Math.min(maxPerStat, value))
     const otherTotal = STAT_NAMES
       .filter(s => s !== stat)
       .reduce((sum, s) => sum + (currentEVs[s] || 0), 0)
-    const available = 510 - otherTotal
+    const available = totalLimit - otherTotal
     return Math.min(clamped, Math.max(0, available))
   }
 
-  static calculateAll(pokemon: Pokemon): Record<string, number> {
+  static calculateAll(pokemon: Pokemon, useStatPoints = false): Record<string, number> {
     const dex = pokemon.species ? getPokemon(pokemon.species) : null
     const baseStats = (dex?.baseStats ?? {}) as Record<string, number>
     const nature = pokemon.nature || 'Serious'
@@ -43,7 +60,7 @@ export class StatsCalculator {
       const iv = pokemon.ivs[stat]
       const ev = pokemon.evs[stat]
       const mult = getNatureMultiplier(nature, stat)
-      result[stat] = StatsCalculator.calculate(base, iv, ev, level, mult, stat)
+      result[stat] = StatsCalculator.calculate(base, iv, ev, level, mult, stat, useStatPoints)
     }
     return result
   }

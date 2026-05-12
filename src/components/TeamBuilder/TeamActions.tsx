@@ -15,7 +15,7 @@ export function TeamActions() {
   const [importText, setImportText] = useState('')
   const [importError, setImportError] = useState('')
 
-  const exportText = exportTeamToShowdown(currentTeam)
+  const exportText = exportTeamToShowdown(currentTeam, { format: currentFormat.id })
 
   function handleImport() {
     try {

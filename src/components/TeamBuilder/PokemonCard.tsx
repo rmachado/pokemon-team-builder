@@ -1,9 +1,11 @@
 import { useMemo, useCallback, memo } from 'react'
 import type { PokemonSet } from '@/types'
-import { getPokemonNum, getPokemon, getMove, getItemSpriteUrl, getNatureMultiplier } from '@/lib/pkmn'
+import { getPokemonNum, getPokemon, getMove, getItemSpriteUrl, getNatureMultiplier, isChampionsFormat } from '@/lib/pkmn'
 import { TYPE_COLORS, STAT_COLORS, STAT_LABEL } from '@/lib/theme'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, AlertTriangle } from 'lucide-react'
 import { StatsCalculator } from '@/domain'
+import { useFormatStore } from '@/stores'
+import { isChampionsLegalSpecies, isChampionsLegalItem } from '@/lib/championsData'
 
 interface PokemonCardProps {
   pokemon: PokemonSet
@@ -15,6 +17,8 @@ interface PokemonCardProps {
 const STATS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'] as const
 
 export const PokemonCard = memo(({ pokemon, isActive, slotIndex, onEdit }: PokemonCardProps) => {
+  const { currentFormat } = useFormatStore()
+  const isChampions = isChampionsFormat(currentFormat.id)
   const hasMon = !!pokemon.species
   const num = hasMon ? getPokemonNum(pokemon.species) : 0
 
@@ -34,10 +38,10 @@ export const PokemonCard = memo(({ pokemon, isActive, slotIndex, onEdit }: Pokem
   const statValues = useMemo(() => {
     const result: Record<string, number> = {}
     for (const s of STATS) {
-      result[s] = StatsCalculator.calculate(baseStats[s] ?? 80, pokemon.ivs[s], pokemon.evs[s], pokemon.level || 50, natureMultipliers[s], s)
+      result[s] = StatsCalculator.calculate(baseStats[s] ?? 80, pokemon.ivs[s], pokemon.evs[s], pokemon.level || 50, natureMultipliers[s], s, isChampions)
     }
     return result
-  }, [baseStats, pokemon.ivs, pokemon.evs, pokemon.level, natureMultipliers])
+  }, [baseStats, pokemon.ivs, pokemon.evs, pokemon.level, natureMultipliers, isChampions])
 
   const movesMeta = useMemo(() => {
     const result: Record<number, { type: string | null; color: string | undefined }> = {}
@@ -52,6 +56,22 @@ export const PokemonCard = memo(({ pokemon, isActive, slotIndex, onEdit }: Pokem
 
   const handleClick = useCallback(() => onEdit(slotIndex, 'pokemon'), [onEdit, slotIndex])
   const handleFieldEdit = useCallback((field: string, moveIndex?: number) => onEdit(slotIndex, field, moveIndex), [onEdit, slotIndex])
+
+  const validationWarnings = useMemo(() => {
+    const warnings: string[] = []
+    if (!hasMon) return warnings
+    if (isChampions) {
+      if (!isChampionsLegalSpecies(pokemon.species)) warnings.push(`${pokemon.species} is not legal in Champions`)
+      if (pokemon.item && !isChampionsLegalItem(pokemon.item)) warnings.push(`${pokemon.item} is not legal in Champions`)
+      if (pokemon.level !== 50) warnings.push('Level must be 50')
+      const total = Object.values(pokemon.evs).reduce((a, b) => a + b, 0)
+      if (total > 66) warnings.push(`Stat points exceed 66 (${total})`)
+      for (const s of STATS) {
+        if (pokemon.evs[s] > 32) warnings.push(`${STAT_LABEL[s]} exceeds 32 SP`)
+      }
+    }
+    return warnings
+  }, [hasMon, isChampions, pokemon])
 
   return (
     <div
@@ -72,6 +92,12 @@ export const PokemonCard = memo(({ pokemon, isActive, slotIndex, onEdit }: Pokem
         />
       )}
 
+      {validationWarnings.length > 0 && (
+        <div className="mx-3 mt-2 mb-0 px-2 py-1 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-1.5">
+          <AlertTriangle className="w-3 h-3 text-red-400 shrink-0" />
+          <span className="text-[10px] text-red-300 truncate">{validationWarnings[0]}{validationWarnings.length > 1 ? ` (+${validationWarnings.length - 1} more)` : ''}</span>
+        </div>
+      )}
       <div className="flex gap-3 p-3">
         {/* Sprite */}
         <button
@@ -127,28 +153,30 @@ export const PokemonCard = memo(({ pokemon, isActive, slotIndex, onEdit }: Pokem
           )}
 
           {/* Tera type */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] text-gray-600 font-medium uppercase tracking-wider shrink-0">Tera</span>
-            <button
-              onClick={e => { e.stopPropagation(); handleFieldEdit('stats') }}
-              className="text-left"
-            >
-              {pokemon.teraType ? (
-                <span
-                  className="text-[10px] px-2 py-0.5 rounded-full font-medium border"
-                  style={{
-                    backgroundColor: (TYPE_COLORS[pokemon.teraType] ?? '#6b7280') + '25',
-                    color: TYPE_COLORS[pokemon.teraType] ?? '#9ca3af',
-                    borderColor: (TYPE_COLORS[pokemon.teraType] ?? '#6b7280') + '40',
-                  }}
-                >
-                  {pokemon.teraType}
-                </span>
-              ) : (
-                <span className="text-[10px] text-gray-600 italic">—</span>
-              )}
-            </button>
-          </div>
+          {!isChampions && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] text-gray-600 font-medium uppercase tracking-wider shrink-0">Tera</span>
+              <button
+                onClick={e => { e.stopPropagation(); handleFieldEdit('stats') }}
+                className="text-left"
+              >
+                {pokemon.teraType ? (
+                  <span
+                    className="text-[10px] px-2 py-0.5 rounded-full font-medium border"
+                    style={{
+                      backgroundColor: (TYPE_COLORS[pokemon.teraType] ?? '#6b7280') + '25',
+                      color: TYPE_COLORS[pokemon.teraType] ?? '#9ca3af',
+                      borderColor: (TYPE_COLORS[pokemon.teraType] ?? '#6b7280') + '40',
+                    }}
+                  >
+                    {pokemon.teraType}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-gray-600 italic">—</span>
+                )}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Moves + Item/Ability */}
@@ -239,7 +267,7 @@ export const PokemonCard = memo(({ pokemon, isActive, slotIndex, onEdit }: Pokem
                 <div className="flex-1 h-1.5 bg-gray-700/50 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-300"
-                    style={{ width: `${Math.min(100, (ev / 252) * 100)}%`, backgroundColor: color }}
+                    style={{ width: `${Math.min(100, (ev / (isChampions ? 32 : 252)) * 100)}%`, backgroundColor: color }}
                   />
                 </div>
                 <span className="text-gray-200 w-7 text-right shrink-0 font-mono">{final}</span>

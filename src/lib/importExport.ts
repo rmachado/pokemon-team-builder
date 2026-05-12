@@ -1,5 +1,6 @@
 import { Team as PkmnTeam } from '@pkmn/sets'
 import type { PokemonSet } from '@/types'
+import { isChampionsFormat } from './pkmn'
 
 export function importTeamFromShowdown(text: string): PokemonSet[] {
   const parsed = PkmnTeam.import(text)
@@ -47,6 +48,7 @@ export interface ExportOptions {
 
 export function exportTeamToShowdown(pokemon: PokemonSet[], options?: ExportOptions): string {
   const lines: string[] = []
+  const isChampions = isChampionsFormat(options?.format || '')
 
   if (options?.name) {
     lines.push(`=== ${options.name} ===`)
@@ -61,7 +63,7 @@ export function exportTeamToShowdown(pokemon: PokemonSet[], options?: ExportOpti
 
     if (p.ability) lines.push(`Ability: ${p.ability}`)
     if (p.level && p.level !== 50) lines.push(`Level: ${p.level}`)
-    if (p.teraType) lines.push(`Tera Type: ${p.teraType}`)
+    if (!isChampions && p.teraType) lines.push(`Tera Type: ${p.teraType}`)
 
     const evStr = ['hp', 'atk', 'def', 'spa', 'spd', 'spe']
       .filter(s => p.evs[s] > 0)
@@ -71,11 +73,13 @@ export function exportTeamToShowdown(pokemon: PokemonSet[], options?: ExportOpti
 
     if (p.nature && p.nature !== 'Serious') lines.push(`${p.nature} Nature`)
 
-    const ivStr = ['hp', 'atk', 'def', 'spa', 'spd', 'spe']
-      .filter(s => p.ivs[s] !== 31)
-      .map(s => `${p.ivs[s]} ${s === 'spa' ? 'SpA' : s === 'spd' ? 'SpD' : s.charAt(0).toUpperCase() + s.slice(1)}`)
-      .join(' / ')
-    if (ivStr) lines.push(`IVs: ${ivStr}`)
+    if (!isChampions) {
+      const ivStr = ['hp', 'atk', 'def', 'spa', 'spd', 'spe']
+        .filter(s => p.ivs[s] !== 31)
+        .map(s => `${p.ivs[s]} ${s === 'spa' ? 'SpA' : s === 'spd' ? 'SpD' : s.charAt(0).toUpperCase() + s.slice(1)}`)
+        .join(' / ')
+      if (ivStr) lines.push(`IVs: ${ivStr}`)
+    }
 
     for (const move of p.moves) {
       if (move) lines.push(`- ${move}`)

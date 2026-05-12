@@ -3,6 +3,7 @@ import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
 import { Search } from 'lucide-react'
 import { getItems, getItem, getItemSpriteUrl } from '@/lib/pkmn'
 import { SearchEngine } from '@/domain'
+import { useFormatStore } from '@/stores'
 
 interface ItemEditorProps {
   current: string
@@ -62,7 +63,8 @@ export function ItemEditor({ current, onSelect, onAdvance }: ItemEditorProps) {
   const [focusedIndex, setFocusedIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
   const virtuosoRef = useRef<VirtuosoHandle>(null)
-  const allItems = useMemo(() => getItems(), [])
+  const { currentFormat } = useFormatStore()
+  const allItems = useMemo(() => getItems(9, currentFormat.id), [currentFormat.id])
 
   const items = useMemo(() => {
     const mapped = allItems.map(i => ({ name: i, score: SearchEngine.score(query, i) }))

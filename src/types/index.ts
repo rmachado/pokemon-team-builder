@@ -39,6 +39,13 @@ export interface VGCFormat {
   gen: number;
   description: string;
   smogonId: string;
+  evSystem: 'evs' | 'statPoints';
+  features: {
+    tera: boolean;
+    levelLocked: boolean;
+    ivLocked: boolean;
+  };
+  hasMeta: boolean;
 }
 
 export interface TypeEffectiveness {

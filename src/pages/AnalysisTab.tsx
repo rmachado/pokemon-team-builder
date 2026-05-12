@@ -20,7 +20,7 @@ export function AnalysisTab() {
   const { currentFormat } = useFormatStore()
 
   const handleRefreshMeta = () => {
-    if (currentFormat.smogonId) {
+    if (currentFormat.hasMeta && currentFormat.smogonId) {
       useMetaStore.getState().refresh(currentFormat.smogonId)
     }
   }
@@ -29,9 +29,11 @@ export function AnalysisTab() {
     <Tabs.Root defaultValue="overview" className="flex flex-col p-4 gap-3" style={{ height: 'calc(100dvh - 88px)' }}>
       <div className="flex items-center justify-between shrink-0">
         <h2 className="text-base font-semibold text-gray-200">Analysis</h2>
-        <Button variant="ghost" size="sm" onClick={handleRefreshMeta}>
-          <RefreshCw className="w-3 h-3" /> Refresh Meta
-        </Button>
+        {currentFormat.hasMeta && (
+          <Button variant="ghost" size="sm" onClick={handleRefreshMeta}>
+            <RefreshCw className="w-3 h-3" /> Refresh Meta
+          </Button>
+        )}
       </div>
 
       <Tabs.List className="flex gap-1 border-b border-gray-700 overflow-x-auto shrink-0" aria-label="Analysis sub-tabs">

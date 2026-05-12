@@ -14,10 +14,10 @@ export default function App() {
   const { load: loadMeta } = useMetaStore()
 
   useEffect(() => {
-    if (currentFormat.smogonId) {
+    if (currentFormat.hasMeta && currentFormat.smogonId) {
       loadMeta(currentFormat.smogonId)
     }
-  }, [currentFormat.smogonId, loadMeta])
+  }, [currentFormat.hasMeta, currentFormat.smogonId, loadMeta])
 
   const handleFormatChange = useCallback((fmt: typeof formats[0]) => {
     setFormat(fmt)

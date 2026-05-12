@@ -5,6 +5,7 @@ import { Dex, toID } from '@pkmn/dex'
 import { getAllPokemon, getPokemonNum, getMoves } from '@/lib/pkmn'
 import { TYPE_COLORS } from '@/lib/theme'
 import { SearchEngine } from '@/domain'
+import { useFormatStore } from '@/stores'
 
 interface PokemonEditorProps {
   onSelect: (species: string) => void
@@ -84,8 +85,9 @@ export function PokemonEditor({ onSelect, onAdvance, exclude = [] }: PokemonEdit
   const [cacheVersion, setCacheVersion] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const searchAreaRef = useRef<HTMLDivElement>(null)
-  const allMons = useMemo(() => getAllPokemon(9), [])
-  const allMoves = useMemo(() => getMoves(9), [])
+  const { currentFormat } = useFormatStore()
+  const allMons = useMemo(() => getAllPokemon(9, currentFormat.id), [currentFormat.id])
+  const allMoves = useMemo(() => getMoves(9, currentFormat.id), [currentFormat.id])
 
   const learnsetCache = useRef<Map<string, Set<string>>>(new Map())
 

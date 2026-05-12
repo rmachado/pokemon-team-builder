@@ -1,9 +1,10 @@
-import { useRef, useMemo, useCallback } from 'react'
+import { useRef, useMemo, useCallback, useEffect } from 'react'
 import { X, Loader2 } from 'lucide-react'
 import type { PokemonSet } from '@/types'
 import { getPokemonNum } from '@/lib/pkmn'
 import { useLearnableMoves } from '@/hooks/useLearnableMoves'
 import { Pokemon } from '@/domain'
+import { useFormatStore } from '@/stores'
 import { PokemonEditor } from './PokemonEditor'
 import { MoveEditor } from './MoveEditor'
 import { ItemEditor } from './ItemEditor'
@@ -31,7 +32,8 @@ const FIELD_LABELS: Record<string, string> = {
 export function EditingPanel({ editTarget, team, onUpdate, onClose, onAdvanceMove }: EditingPanelProps) {
   const slotIndex = editTarget?.slotIndex ?? -1
   const pokemon = slotIndex >= 0 ? team[slotIndex] : null
-  const learnableMoves = useLearnableMoves(pokemon?.species ?? '')
+  const { currentFormat } = useFormatStore()
+  const learnableMoves = useLearnableMoves(pokemon?.species ?? '', currentFormat.id)
 
   return (
     <div className="h-full border border-gray-700/60 rounded-xl bg-gray-900/60 backdrop-blur-sm flex flex-col overflow-hidden">
@@ -78,9 +80,9 @@ function PanelContent({ editTarget, pokemon, team, learnableMoves, onUpdate, onC
     : FIELD_LABELS[field]
 
   const pokemonRef = useRef(pokemon)
-  pokemonRef.current = pokemon
+  useEffect(() => { pokemonRef.current = pokemon }, [pokemon])
   const teamRef = useRef(team)
-  teamRef.current = team
+  useEffect(() => { teamRef.current = team }, [team])
 
   const speciesAbilities = useMemo(() => Pokemon.getSpeciesAbilities(pokemon.species), [pokemon.species])
   const usedSpecies = useMemo(() => team.filter(p => p.species).map(p => p.species), [team])
