@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, type KeyboardEvent } from 'react'
+import { useState, useMemo, useRef, type KeyboardEvent } from 'react'
 import { Search, Shield } from 'lucide-react'
 import { getAbility } from '@/lib/pkmn'
 import { SearchEngine } from '@/domain'
@@ -14,7 +14,6 @@ export function AbilityEditor({ current, onSelect, onAdvance, speciesAbilities }
   const [query, setQuery] = useState('')
   const [focusedIndex, setFocusedIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
-  const itemRefs = useRef<Map<number, HTMLButtonElement>>(new Map())
   const abilities = useMemo(() => speciesAbilities ?? [], [speciesAbilities])
 
   const filtered = useMemo(() => {
@@ -27,30 +26,20 @@ export function AbilityEditor({ current, onSelect, onAdvance, speciesAbilities }
       .sort((a, b) => b.score - a.score)
   }, [query, abilities])
 
-  const safeFocusedIndex = focusedIndex >= filtered.length ? filtered.length - 1 : focusedIndex
-
-  const focusItem = useCallback((idx: number) => {
-    const safeIdx = idx >= filtered.length ? filtered.length - 1 : idx
-    setFocusedIndex(safeIdx)
-    const btn = itemRefs.current.get(safeIdx)
-    btn?.focus()
-    btn?.scrollIntoView({ block: 'nearest' })
-  }, [filtered.length])
-
   function handleSearchKeyDown(e: KeyboardEvent) {
     if (e.key === 'ArrowDown' && filtered.length > 0) {
       e.preventDefault()
-      focusItem(0)
+      setFocusedIndex(0)
     }
   }
 
   function handleItemKeyDown(e: KeyboardEvent, idx: number, name: string) {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      if (idx < filtered.length - 1) focusItem(idx + 1)
+      if (idx < filtered.length - 1) setFocusedIndex(idx + 1)
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      if (idx > 0) focusItem(idx - 1)
+      if (idx > 0) setFocusedIndex(idx - 1)
       else { setFocusedIndex(-1); inputRef.current?.focus() }
     } else if (e.key === 'Enter') {
       e.preventDefault()
@@ -87,13 +76,13 @@ export function AbilityEditor({ current, onSelect, onAdvance, speciesAbilities }
           return (
             <button
               key={name}
-              ref={el => { if (el) itemRefs.current.set(idx, el); else itemRefs.current.delete(idx) }}
               onClick={() => { onSelect(name); setQuery(''); setFocusedIndex(-1); inputRef.current?.focus(); onAdvance?.() }}
               onKeyDown={e => handleItemKeyDown(e, idx, name)}
-              tabIndex={safeFocusedIndex === idx ? 0 : -1}
               className={`w-full text-left rounded-xl p-3 transition-colors border-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 ${
                 isSelected
                   ? 'border-blue-400 bg-blue-600/10'
+                  : idx === focusedIndex
+                  ? 'border-blue-300/50 bg-gray-700/50'
                   : 'border-transparent bg-gray-800/30 hover:bg-gray-800/60 hover:border-gray-600/50'
               }`}
             >

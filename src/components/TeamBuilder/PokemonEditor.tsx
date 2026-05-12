@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, type KeyboardEvent } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback, memo, type KeyboardEvent } from 'react'
 import { Virtuoso } from 'react-virtuoso'
 import { Search, X, Loader2 } from 'lucide-react'
 import { Dex, toID } from '@pkmn/dex'
@@ -14,6 +14,67 @@ interface PokemonEditorProps {
 
 type FilterChip = { kind: 'type' | 'ability' | 'move'; value: string }
 
+interface MonData {
+  name: string
+  types: string[]
+  abilities: string[]
+  baseStats: Record<string, number>
+}
+
+interface PokemonRowProps {
+  mon: MonData
+  onSelect: (name: string) => void
+}
+
+const PokemonRow = memo(({ mon, onSelect }: PokemonRowProps) => {
+  const num = getPokemonNum(mon.name)
+  const types = mon.types || []
+
+  return (
+    <button
+      onClick={() => onSelect(mon.name)}
+      onKeyDown={e => { if (e.key === 'Enter') onSelect(mon.name) }}
+      className="w-full text-left rounded-xl p-2.5 transition-colors border-2 border-transparent bg-gray-800/30 hover:bg-gray-800/60 hover:border-gray-600/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+    >
+      <div className="flex items-center gap-3">
+        <img
+          src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${num}.png`}
+          alt={mon.name}
+          className="w-10 h-10 object-contain shrink-0"
+          loading="lazy"
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-gray-100">{mon.name}</span>
+            <span className="text-xs text-gray-500">#{num.toString().padStart(3, '0')}</span>
+          </div>
+          <div className="flex flex-col items-start gap-0.5 mt-0.5">
+            <div className="flex flex-wrap gap-1">
+              {types.map(t => (
+                <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                  style={{ backgroundColor: (TYPE_COLORS[t] ?? '#6b7280') + '25', color: TYPE_COLORS[t] ?? '#9ca3af' }}>
+                  {t}
+                </span>
+              ))}
+            </div>
+            <span className="text-xs text-gray-500">{mon.abilities?.filter(Boolean).join(' / ') || ''}</span>
+          </div>
+        </div>
+        <div className="text-xs text-gray-500 font-mono shrink-0 text-right">
+          <div className="grid grid-cols-2 gap-x-2">
+            <div>HP {mon.baseStats?.hp ?? 0}</div>
+            <div>Atk {mon.baseStats?.atk ?? 0}</div>
+            <div>Def {mon.baseStats?.def ?? 0}</div>
+            <div>SpA {mon.baseStats?.spa ?? 0}</div>
+            <div>SpD {mon.baseStats?.spd ?? 0}</div>
+            <div>Spe {mon.baseStats?.spe ?? 0}</div>
+          </div>
+        </div>
+      </div>
+    </button>
+  )
+})
+
 export function PokemonEditor({ onSelect, onAdvance, exclude = [] }: PokemonEditorProps) {
   const [query, setQuery] = useState('')
   const [chips, setChips] = useState<FilterChip[]>([])
@@ -23,8 +84,8 @@ export function PokemonEditor({ onSelect, onAdvance, exclude = [] }: PokemonEdit
   const [cacheVersion, setCacheVersion] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const searchAreaRef = useRef<HTMLDivElement>(null)
-  const allMons = getAllPokemon(9)
-  const allMoves = getMoves(9)
+  const allMons = useMemo(() => getAllPokemon(9), [])
+  const allMoves = useMemo(() => getMoves(9), [])
 
   const learnsetCache = useRef<Map<string, Set<string>>>(new Map())
 
@@ -161,10 +222,10 @@ export function PokemonEditor({ onSelect, onAdvance, exclude = [] }: PokemonEdit
     setChips(prev => prev.filter(c => !(c.kind === chip.kind && c.value === chip.value)))
   }
 
-  function handleSelect(name: string) {
+  const handleSelect = useCallback((name: string) => {
     onSelect(name)
     onAdvance?.()
-  }
+  }, [onSelect, onAdvance])
 
   function handleSearchKeyDown(e: KeyboardEvent) {
     if (e.key === 'ArrowDown') {
@@ -184,54 +245,7 @@ export function PokemonEditor({ onSelect, onAdvance, exclude = [] }: PokemonEdit
     }
   }
 
-  const PokemonRow = ({ mon }: { mon: (typeof allMons)[number] }) => {
-          const num = getPokemonNum(mon.name)
-          const types = mon.types || []
 
-          return (
-      <button
-        onClick={() => handleSelect(mon.name)}
-        onKeyDown={e => { if (e.key === 'Enter') handleSelect(mon.name) }}
-        className="w-full text-left rounded-xl p-2.5 transition-colors border-2 border-transparent bg-gray-800/30 hover:bg-gray-800/60 hover:border-gray-600/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
-      >
-        <div className="flex items-center gap-3">
-          <img
-            src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${num}.png`}
-            alt={mon.name}
-            className="w-10 h-10 object-contain shrink-0"
-            loading="lazy"
-          />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-gray-100">{mon.name}</span>
-              <span className="text-xs text-gray-500">#{num.toString().padStart(3, '0')}</span>
-            </div>
-            <div className="flex flex-col items-start gap-0.5 mt-0.5">
-              <div className="flex flex-wrap gap-1">            
-                {types.map(t => (
-                  <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                    style={{ backgroundColor: (TYPE_COLORS[t] ?? '#6b7280') + '25', color: TYPE_COLORS[t] ?? '#9ca3af' }}>
-                    {t}
-                  </span>
-                ))}
-              </div>
-              <span className="text-xs text-gray-500">{mon.abilities?.filter(Boolean).join(' / ') || ''}</span>
-            </div>
-          </div>
-          <div className="text-xs text-gray-500 font-mono shrink-0 text-right">
-            <div className="grid grid-cols-2 gap-x-2">
-              <div>HP {mon.baseStats?.hp ?? 0}</div>
-              <div>Atk {mon.baseStats?.atk ?? 0}</div>
-              <div>Def {mon.baseStats?.def ?? 0}</div>
-              <div>SpA {mon.baseStats?.spa ?? 0}</div>
-              <div>SpD {mon.baseStats?.spd ?? 0}</div>
-              <div>Spe {mon.baseStats?.spe ?? 0}</div>
-            </div>
-          </div>
-        </div>
-      </button>
-    )
-  }
 
   return (
     <div className="flex flex-col h-full gap-2">
@@ -289,7 +303,7 @@ export function PokemonEditor({ onSelect, onAdvance, exclude = [] }: PokemonEdit
         ) : (
           <Virtuoso
             data={filtered}
-            itemContent={(_, mon) => <PokemonRow mon={mon} />}
+            itemContent={(_, mon) => <PokemonRow mon={mon} onSelect={handleSelect} />}
             className="h-full"
             increaseViewportBy={{ top: 400, bottom: 400 }}
           />

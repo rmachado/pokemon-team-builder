@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react'
-import { AnimatePresence } from 'framer-motion'
 import { PokemonCard } from '@/components/TeamBuilder/PokemonCard'
 import { TeamActions } from '@/components/TeamBuilder/TeamActions'
 import { EditingPanel } from '@/components/TeamBuilder/EditingPanel'
@@ -11,9 +10,9 @@ export function BuilderTab() {
   const { currentTeam, updatePokemon, saveCurrentTeam } = useTeamStore()
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null)
 
-  function handleEdit(slotIndex: number, field: string, moveIndex?: number) {
+  const handleEdit = useCallback((slotIndex: number, field: string, moveIndex?: number) => {
     setEditTarget({ slotIndex, field: field as EditTarget['field'], moveIndex })
-  }
+  }, [])
 
   const handleAdvanceMove = useCallback(() => {
     if (!editTarget) return
@@ -53,17 +52,15 @@ export function BuilderTab() {
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-2 pr-1" style={{ minHeight: 0 }}>
-          <AnimatePresence>
-            {currentTeam.map((pokemon, i) => (
-              <PokemonCard
-                key={i}
-                pokemon={pokemon}
-                isActive={editTarget?.slotIndex === i}
-                onClick={() => handleEdit(i, 'pokemon')}
-                onEdit={(field, moveIndex) => handleEdit(i, field, moveIndex)}
-              />
-            ))}
-          </AnimatePresence>
+          {currentTeam.map((pokemon, i) => (
+            <PokemonCard
+              key={i}
+              pokemon={pokemon}
+              isActive={editTarget?.slotIndex === i}
+              slotIndex={i}
+              onEdit={handleEdit}
+            />
+          ))}
         </div>
       </div>
 

@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
 import type { GameTab } from './types'
 import { FormatSelector } from './components/FormatSelector'
 import { TabBar } from './components/TabBar'
@@ -39,19 +38,11 @@ export default function App() {
       </header>
 
       <main className="flex-1 w-full">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.15 }}
-          >
-            {activeTab === 'builder' && <BuilderTab />}
-            {activeTab === 'analysis' && <AnalysisTab />}
-            {activeTab === 'teams' && <TeamsTab />}
-          </motion.div>
-        </AnimatePresence>
+        <div key={activeTab} className="animate-tab-fade-in">
+          {activeTab === 'builder' && <BuilderTab />}
+          {activeTab === 'analysis' && <AnalysisTab />}
+          {activeTab === 'teams' && <TeamsTab />}
+        </div>
       </main>
 
       <footer className="fixed bottom-0 left-0 right-0 z-30 bg-gray-950/90 backdrop-blur-md border-t border-gray-800/50">

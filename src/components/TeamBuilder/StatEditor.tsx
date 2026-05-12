@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import * as Slider from '@radix-ui/react-slider'
-import { motion } from 'framer-motion'
 import { Zap, Archive } from 'lucide-react'
 import type { PokemonSet, StatName } from '@/types'
 import { NATURES, TYPES, STAT_NAMES, getPokemon, getNatureMultiplier } from '@/lib/pkmn'
@@ -15,10 +14,26 @@ interface StatEditorProps {
 
 export function StatEditor({ pokemon, onChange }: StatEditorProps) {
   const dexSpecies = useMemo(() => pokemon.species ? getPokemon(pokemon.species) : null, [pokemon.species])
-    const baseStats = (dexSpecies?.baseStats ?? {}) as Record<string, number>
+  const baseStats = useMemo(() => (dexSpecies?.baseStats ?? {}) as Record<string, number>, [dexSpecies])
   const nature = pokemon.nature || 'Serious'
 
-  const p = Pokemon.fromJSON(pokemon)
+  const p = useMemo(() => Pokemon.fromJSON(pokemon), [pokemon])
+
+  const natureMultipliers = useMemo(() => {
+    const result: Record<string, number> = {}
+    for (const stat of STAT_NAMES) {
+      result[stat] = getNatureMultiplier(nature, stat)
+    }
+    return result
+  }, [nature])
+
+  const statFinals = useMemo(() => {
+    const result: Record<string, number> = {}
+    for (const stat of STAT_NAMES) {
+      result[stat] = StatsCalculator.calculate(baseStats[stat] ?? 80, pokemon.ivs[stat], pokemon.evs[stat], pokemon.level || 50, natureMultipliers[stat], stat)
+    }
+    return result
+  }, [baseStats, pokemon.ivs, pokemon.evs, pokemon.level, natureMultipliers])
 
   function updateEVs(stat: StatName, values: number[]) {
     onChange(p.withEV(stat, values[0] ?? 0).toJSON())
@@ -35,8 +50,8 @@ export function StatEditor({ pokemon, onChange }: StatEditorProps) {
         {STAT_NAMES.map(stat => {
           const base = baseStats?.[stat] ?? 0
           const ev = pokemon.evs[stat]
-          const mult = getNatureMultiplier(nature, stat)
-          const final = StatsCalculator.calculate(base, pokemon.ivs[stat], ev, pokemon.level || 50, mult, stat)
+          const mult = natureMultipliers[stat]
+          const final = statFinals[stat]
           const color = STAT_COLORS[stat]
           const isPlus = mult > 1
           const isMinus = mult < 1
@@ -90,24 +105,21 @@ export function StatEditor({ pokemon, onChange }: StatEditorProps) {
       {/* Stat bar chart */}
       <div className="space-y-[2px]">
         {STAT_NAMES.map(stat => {
-          const final = StatsCalculator.calculate(baseStats?.[stat] ?? 80, pokemon.ivs[stat], pokemon.evs[stat], pokemon.level || 50, getNatureMultiplier(nature, stat), stat)
+          const final = statFinals[stat]
           const color = STAT_COLORS[stat]
           const REF_MAX = 300
 
           return (
-            <div key={`bar-${stat}`} className="flex items-center gap-1 text-[10px]">
-              <span className="w-5 text-gray-400 text-right">{STAT_LABEL[stat]}</span>
-              <div className="flex-1 h-3">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(100, (final / REF_MAX) * 100)}%` }}
-                  transition={{ duration: 0.3, ease: 'easeOut' }}
-                  className="h-full rounded-full"
-                  style={{ backgroundColor: color }}
-                />
+              <div key={`bar-${stat}`} className="flex items-center gap-1 text-[10px]">
+                <span className="w-5 text-gray-400 text-right">{STAT_LABEL[stat]}</span>
+                <div className="flex-1 h-3">
+                  <div
+                    className="h-full rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `${Math.min(100, (final / REF_MAX) * 100)}%`, backgroundColor: color }}
+                  />
+                </div>
+                <span className="w-8 text-gray-200 font-mono text-right">{final}</span>
               </div>
-              <span className="w-8 text-gray-200 font-mono text-right">{final}</span>
-            </div>
           )
         })}
       </div>

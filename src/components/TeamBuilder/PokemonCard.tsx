@@ -1,5 +1,4 @@
-import { useMemo } from 'react'
-import { motion } from 'framer-motion'
+import { useMemo, useCallback, memo } from 'react'
 import type { PokemonSet } from '@/types'
 import { getPokemonNum, getPokemon, getMove, getItemSpriteUrl, getNatureMultiplier } from '@/lib/pkmn'
 import { TYPE_COLORS, STAT_COLORS, STAT_LABEL } from '@/lib/theme'
@@ -9,32 +8,55 @@ import { StatsCalculator } from '@/domain'
 interface PokemonCardProps {
   pokemon: PokemonSet
   isActive: boolean
-  onClick: () => void
-  onEdit: (field: string, moveIndex?: number) => void
+  slotIndex: number
+  onEdit: (slotIndex: number, field: string, moveIndex?: number) => void
 }
 
 const STATS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'] as const
 
-export function PokemonCard({ pokemon, isActive, onClick, onEdit }: PokemonCardProps) {
+export const PokemonCard = memo(({ pokemon, isActive, slotIndex, onEdit }: PokemonCardProps) => {
   const hasMon = !!pokemon.species
   const num = hasMon ? getPokemonNum(pokemon.species) : 0
 
   const dexSpecies = useMemo(() => pokemon.species ? getPokemon(pokemon.species) : null, [pokemon.species])
-    const baseStats = (dexSpecies?.baseStats ?? {}) as Record<string, number>
-  const types = (dexSpecies?.types ?? []) as string[]
-  const primaryColor = types[0] ? TYPE_COLORS[types[0]] ?? '#6b7280' : '#6b7280'
+  const baseStats = useMemo(() => (dexSpecies?.baseStats ?? {}) as Record<string, number>, [dexSpecies])
+  const types = useMemo(() => (dexSpecies?.types ?? []) as string[], [dexSpecies])
+  const primaryColor = useMemo(() => types[0] ? TYPE_COLORS[types[0]] ?? '#6b7280' : '#6b7280', [types])
 
-  function statValue(s: string): number {
-    return StatsCalculator.calculate(baseStats[s] ?? 80, pokemon.ivs[s], pokemon.evs[s], pokemon.level || 50, getNatureMultiplier(pokemon.nature, s), s)
-  }
+  const natureMultipliers = useMemo(() => {
+    const result: Record<string, number> = {}
+    for (const s of STATS) {
+      result[s] = getNatureMultiplier(pokemon.nature, s)
+    }
+    return result
+  }, [pokemon.nature])
+
+  const statValues = useMemo(() => {
+    const result: Record<string, number> = {}
+    for (const s of STATS) {
+      result[s] = StatsCalculator.calculate(baseStats[s] ?? 80, pokemon.ivs[s], pokemon.evs[s], pokemon.level || 50, natureMultipliers[s], s)
+    }
+    return result
+  }, [baseStats, pokemon.ivs, pokemon.evs, pokemon.level, natureMultipliers])
+
+  const movesMeta = useMemo(() => {
+    const result: Record<number, { type: string | null; color: string | undefined }> = {}
+    for (let i = 0; i < 4; i++) {
+      const moveName = pokemon.moves[i]
+      const moveData = moveName ? getMove(moveName) : null
+      const moveType = moveData ? moveData.type as string : null
+      result[i] = { type: moveType, color: moveType ? TYPE_COLORS[moveType] : undefined }
+    }
+    return result
+  }, [pokemon.moves])
+
+  const handleClick = useCallback(() => onEdit(slotIndex, 'pokemon'), [onEdit, slotIndex])
+  const handleFieldEdit = useCallback((field: string, moveIndex?: number) => onEdit(slotIndex, field, moveIndex), [onEdit, slotIndex])
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
-      onClick={onClick}
-      className={`relative rounded-xl border transition-all duration-200 cursor-pointer select-none ${
+    <div
+      onClick={handleClick}
+      className={`relative rounded-xl border transition-all duration-200 cursor-pointer select-none animate-fade-in-up ${
         isActive
           ? 'border-blue-400/60 bg-gray-800/80 shadow-lg shadow-blue-500/5'
           : hasMon
@@ -53,7 +75,7 @@ export function PokemonCard({ pokemon, isActive, onClick, onEdit }: PokemonCardP
       <div className="flex gap-3 p-3">
         {/* Sprite */}
         <button
-          onClick={e => { e.stopPropagation(); onEdit('pokemon') }}
+          onClick={e => { e.stopPropagation(); handleFieldEdit('pokemon') }}
           className="shrink-0 self-start"
         >
           <div
@@ -80,7 +102,7 @@ export function PokemonCard({ pokemon, isActive, onClick, onEdit }: PokemonCardP
         {/* Info */}
         <div className="flex flex-col gap-1 min-w-0 w-28 shrink-0">
           {/* Name + Level */}
-          <button onClick={e => { e.stopPropagation(); onEdit('pokemon') }} className="text-left">
+          <button onClick={e => { e.stopPropagation(); handleFieldEdit('pokemon') }} className="text-left">
             <span className="text-sm font-semibold text-gray-100 truncate block">
               {hasMon ? pokemon.species : 'Empty slot'}
             </span>
@@ -108,7 +130,7 @@ export function PokemonCard({ pokemon, isActive, onClick, onEdit }: PokemonCardP
           <div className="flex items-center gap-1.5">
             <span className="text-[9px] text-gray-600 font-medium uppercase tracking-wider shrink-0">Tera</span>
             <button
-              onClick={e => { e.stopPropagation(); onEdit('stats') }}
+              onClick={e => { e.stopPropagation(); handleFieldEdit('stats') }}
               className="text-left"
             >
               {pokemon.teraType ? (
@@ -136,16 +158,14 @@ export function PokemonCard({ pokemon, isActive, onClick, onEdit }: PokemonCardP
           <div className="grid grid-cols-2 gap-1">
             {[0, 1, 2, 3].map(i => {
               const moveName = pokemon.moves[i]
-              const moveData = moveName ? getMove(moveName) : null
-              const moveType = moveData ? moveData.type as string : null
-              const typeColor = moveType ? TYPE_COLORS[moveType] : undefined
+              const meta = movesMeta[i]
+              const typeColor = meta.color
 
               return (
-                <motion.button
+                <button
                   key={i}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={e => { e.stopPropagation(); onEdit('move', i) }}
-                  className={`text-xs rounded-lg px-2 py-1.5 text-left truncate border transition-colors ${
+                  onClick={e => { e.stopPropagation(); handleFieldEdit('move', i) }}
+                  className={`text-xs rounded-lg px-2 py-1.5 text-left truncate border transition-colors active-scale ${
                     moveName
                       ? 'text-gray-200 border-gray-600/60 bg-gray-700/30 hover:bg-gray-700/60'
                       : 'text-gray-600 italic border-dashed border-gray-700/40 hover:border-gray-600/60'
@@ -153,7 +173,7 @@ export function PokemonCard({ pokemon, isActive, onClick, onEdit }: PokemonCardP
                   style={moveName && typeColor ? { borderLeft: `3px solid ${typeColor}` } : undefined}
                 >
                   {moveName || '—'}
-                </motion.button>
+                </button>
               )
             })}
           </div>
@@ -163,7 +183,7 @@ export function PokemonCard({ pokemon, isActive, onClick, onEdit }: PokemonCardP
             <div className="text-[9px] text-gray-600 font-medium uppercase tracking-wider">Item</div>
             <div className="text-[9px] text-gray-600 font-medium uppercase tracking-wider">Ability</div>
             <button
-              onClick={e => { e.stopPropagation(); onEdit('item') }}
+              onClick={e => { e.stopPropagation(); handleFieldEdit('item') }}
               className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs border transition-colors ${
                 pokemon.item
                   ? 'text-purple-300 border-gray-600/60 bg-gray-700/30 hover:bg-gray-700/60'
@@ -186,7 +206,7 @@ export function PokemonCard({ pokemon, isActive, onClick, onEdit }: PokemonCardP
               )}
             </button>
             <button
-              onClick={e => { e.stopPropagation(); onEdit('ability') }}
+              onClick={e => { e.stopPropagation(); handleFieldEdit('ability') }}
               className={`rounded-lg px-2 py-1.5 text-xs border truncate text-left transition-colors ${
                 pokemon.ability
                   ? 'text-gray-300 border-gray-600/60 bg-gray-700/30 hover:bg-gray-700/60'
@@ -202,14 +222,14 @@ export function PokemonCard({ pokemon, isActive, onClick, onEdit }: PokemonCardP
         <div className="flex flex-col shrink-0">
           <div className="text-[9px] text-gray-600 font-medium uppercase tracking-wider">Stats</div>
           <button
-            onClick={e => { e.stopPropagation(); onEdit('stats') }}
+            onClick={e => { e.stopPropagation(); handleFieldEdit('stats') }}
             className="flex flex-col gap-[3px] min-w-0 w-44"
           >
           {STATS.map(s => {
             const base = baseStats[s] ?? 0
             const ev = pokemon.evs[s]
-            const final = statValue(s)
-            const mult = getNatureMultiplier(pokemon.nature, s)
+            const final = statValues[s]
+            const mult = natureMultipliers[s]
             const color = STAT_COLORS[s]
 
             return (
@@ -232,6 +252,8 @@ export function PokemonCard({ pokemon, isActive, onClick, onEdit }: PokemonCardP
         </div>
       </div>
 
-    </motion.div>
+    </div>
   )
-}
+})
+
+PokemonCard.displayName = 'PokemonCard'

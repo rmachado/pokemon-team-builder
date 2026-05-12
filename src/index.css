@@ -70,3 +70,45 @@ input[type="number"]::-webkit-outer-spin-button {
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
   animation: shimmer 1.5s infinite;
 }
+
+/* Lightweight CSS animations replacing Framer Motion */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.25s ease-out both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out both;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.2s ease-out both;
+}
+
+.animate-tab-fade-in {
+  animation: tabFadeIn 0.15s ease-out both;
+}
+
+/* Active press effect replacing motion whileTap */
+.active-scale:active {
+  transform: scale(0.97);
+}

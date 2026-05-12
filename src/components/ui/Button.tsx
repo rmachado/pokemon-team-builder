@@ -1,6 +1,5 @@
 import { forwardRef, type ReactNode } from 'react'
 import { Slot } from '@radix-ui/react-slot'
-import { motion } from 'framer-motion'
 
 interface ButtonProps {
   children: ReactNode
@@ -28,7 +27,7 @@ const sizes = {
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ children, onClick, variant = 'primary', size = 'md', asChild = false, disabled, className = '', type = 'button' }, ref) => {
-    const Comp = asChild ? Slot : motion.button
+    const Comp = asChild ? Slot : 'button'
 
     return (
       <Comp
@@ -36,8 +35,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         type={type}
         onClick={onClick}
         disabled={disabled}
-        whileTap={disabled ? undefined : { scale: 0.97 }}
-        className={`inline-flex items-center justify-center gap-1.5 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
+        className={`inline-flex items-center justify-center gap-1.5 font-medium transition-colors active-scale disabled:opacity-40 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
       >
         {children}
       </Comp>

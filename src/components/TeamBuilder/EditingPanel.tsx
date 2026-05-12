@@ -1,5 +1,5 @@
+import { useRef, useMemo, useCallback } from 'react'
 import { X, Loader2 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
 import type { PokemonSet } from '@/types'
 import { getPokemonNum } from '@/lib/pkmn'
 import { useLearnableMoves } from '@/hooks/useLearnableMoves'
@@ -35,36 +35,28 @@ export function EditingPanel({ editTarget, team, onUpdate, onClose, onAdvanceMov
 
   return (
     <div className="h-full border border-gray-700/60 rounded-xl bg-gray-900/60 backdrop-blur-sm flex flex-col overflow-hidden">
-      <AnimatePresence mode="wait">
-        {!editTarget || !pokemon ? (
-          <motion.div
-            key="empty"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex-1 flex items-center justify-center p-6"
-          >
-            <div className="text-center space-y-3">
-              <div className="w-16 h-16 mx-auto rounded-full bg-gray-800/50 flex items-center justify-center">
-                <span className="text-2xl text-gray-600">?</span>
-              </div>
-              <p className="text-sm text-gray-500">Click on a Pokémon card to start editing</p>
-              <p className="text-xs text-gray-600">Use 1-6 keys to quickly jump between slots</p>
+      {!editTarget || !pokemon ? (
+        <div className="flex-1 flex items-center justify-center p-6 animate-fade-in">
+          <div className="text-center space-y-3">
+            <div className="w-16 h-16 mx-auto rounded-full bg-gray-800/50 flex items-center justify-center">
+              <span className="text-2xl text-gray-600">?</span>
             </div>
-          </motion.div>
-        ) : (
-          <PanelContent
-            key={`edit-${slotIndex}-${editTarget.field}-${editTarget.moveIndex ?? ''}`}
-            editTarget={editTarget}
-            pokemon={pokemon}
-            team={team}
-            learnableMoves={learnableMoves}
-            onUpdate={onUpdate}
-            onClose={onClose}
-            onAdvance={onAdvanceMove}
-          />
-        )}
-      </AnimatePresence>
+            <p className="text-sm text-gray-500">Click on a Pokémon card to start editing</p>
+            <p className="text-xs text-gray-600">Use 1-6 keys to quickly jump between slots</p>
+          </div>
+        </div>
+      ) : (
+        <PanelContent
+          key={`edit-${slotIndex}-${editTarget.field}-${editTarget.moveIndex ?? ''}`}
+          editTarget={editTarget}
+          pokemon={pokemon}
+          team={team}
+          learnableMoves={learnableMoves}
+          onUpdate={onUpdate}
+          onClose={onClose}
+          onAdvance={onAdvanceMove}
+        />
+      )}
     </div>
   )
 }
@@ -85,23 +77,46 @@ function PanelContent({ editTarget, pokemon, team, learnableMoves, onUpdate, onC
     ? `${FIELD_LABELS[field]} ${moveIndex + 1}`
     : FIELD_LABELS[field]
 
-  function updatePokemon(updated: PokemonSet) {
-    onUpdate(slotIndex, updated)
-  }
+  const pokemonRef = useRef(pokemon)
+  pokemonRef.current = pokemon
+  const teamRef = useRef(team)
+  teamRef.current = team
 
-  const p = Pokemon.fromJSON(pokemon)
-  const speciesAbilities = Pokemon.getSpeciesAbilities(pokemon.species)
-  const usedSpecies = team.filter(p => p.species).map(p => p.species)
+  const speciesAbilities = useMemo(() => Pokemon.getSpeciesAbilities(pokemon.species), [pokemon.species])
+  const usedSpecies = useMemo(() => team.filter(p => p.species).map(p => p.species), [team])
   const num = pokemon.species ? getPokemonNum(pokemon.species) : 0
 
+  const handlePokemonSelect = useCallback((species: string) => {
+    const p = Pokemon.fromJSON(pokemonRef.current)
+    onUpdate(slotIndex, p.withSpecies(species).toJSON())
+    onAdvance?.()
+  }, [onUpdate, slotIndex, onAdvance])
+
+  const handleMoveSelect = useCallback((move: string) => {
+    const p = Pokemon.fromJSON(pokemonRef.current)
+    if (moveIndex !== undefined) {
+      onUpdate(slotIndex, p.withMove(moveIndex, move).toJSON())
+    }
+  }, [onUpdate, slotIndex, moveIndex])
+
+  const handleItemSelect = useCallback((item: string) => {
+    const p = Pokemon.fromJSON(pokemonRef.current)
+    onUpdate(slotIndex, p.withItem(item).toJSON())
+    onAdvance?.()
+  }, [onUpdate, slotIndex, onAdvance])
+
+  const handleAbilitySelect = useCallback((ability: string) => {
+    const p = Pokemon.fromJSON(pokemonRef.current)
+    onUpdate(slotIndex, p.withAbility(ability).toJSON())
+    onAdvance?.()
+  }, [onUpdate, slotIndex, onAdvance])
+
+  const handleStatChange = useCallback((updated: PokemonSet) => {
+    onUpdate(slotIndex, updated)
+  }, [onUpdate, slotIndex])
+
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 40 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -40 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
-      className="flex flex-col flex-1 min-h-0"
-    >
+    <div className="flex flex-col flex-1 min-h-0 animate-slide-in-right">
       <div className="flex items-center gap-3 px-3 py-2.5 border-b border-gray-700/50 shrink-0">
         {num > 0 && (
           <img
@@ -127,10 +142,7 @@ function PanelContent({ editTarget, pokemon, team, learnableMoves, onUpdate, onC
       <div className="flex-1 min-h-0 p-3">
         {field === 'pokemon' && (
           <PokemonEditor
-            onSelect={species => {
-              updatePokemon(p.withSpecies(species).toJSON())
-              onAdvance?.()
-            }}
+            onSelect={handlePokemonSelect}
             exclude={usedSpecies}
           />
         )}
@@ -144,9 +156,7 @@ function PanelContent({ editTarget, pokemon, team, learnableMoves, onUpdate, onC
             <MoveEditor
               current={pokemon.moves[moveIndex]}
               learnableMoves={learnableMoves}
-              onSelect={move => {
-                updatePokemon(p.withMove(moveIndex, move).toJSON())
-              }}
+              onSelect={handleMoveSelect}
               onAdvance={onAdvance}
             />
           )
@@ -154,22 +164,22 @@ function PanelContent({ editTarget, pokemon, team, learnableMoves, onUpdate, onC
         {field === 'item' && (
             <ItemEditor
               current={pokemon.item}
-              onSelect={item => updatePokemon(p.withItem(item).toJSON())}
+              onSelect={handleItemSelect}
               onAdvance={onAdvance}
             />
           )}
           {field === 'ability' && (
             <AbilityEditor
               current={pokemon.ability}
-              onSelect={ability => updatePokemon(p.withAbility(ability).toJSON())}
+              onSelect={handleAbilitySelect}
               speciesAbilities={speciesAbilities}
               onAdvance={onAdvance}
             />
           )}
         {field === 'stats' && (
-          <StatEditor pokemon={pokemon} onChange={updatePokemon} />
+          <StatEditor pokemon={pokemon} onChange={handleStatChange} />
         )}
       </div>
-    </motion.div>
+    </div>
   )
 }
